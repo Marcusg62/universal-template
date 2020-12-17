@@ -1,0 +1,14 @@
+{
+  "targets": {
+    "inhouse-dev-ddaad": {
+      "hosting": {
+        "take5": [
+          "inhouse-dev-ddaad"
+        ]
+      }
+    }
+  },
+  "projects": {
+    "default": "inhouse-dev-ddaad"
+  }
+}
