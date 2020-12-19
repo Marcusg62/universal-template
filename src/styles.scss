@@ -6,3 +6,12 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .cursor {
     cursor: pointer;
 }
+
+.m-auto {
+    margin: auto !important;
+}
+
+.centerButton {
+    display: block;
+    margin: auto;
+}

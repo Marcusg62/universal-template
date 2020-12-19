@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
+import { OrderFormService } from '../restaurants/order-form.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-restaurant',
@@ -9,13 +11,10 @@ import { Observable } from 'rxjs';
 })
 export class RestaurantComponent implements OnInit {
 
-  private restaurantDoc: AngularFirestoreDocument<any>;
-  restaurant: Observable<any>;
+  constructor(private route: ActivatedRoute, private afs: AngularFirestore, public orderForm: OrderFormService) {
 
-  constructor(private afs: AngularFirestore) {
+    this.orderForm.selectedRestaurant.next(this.route.snapshot.url[1].path)
 
-    this.restaurantDoc = afs.doc<any>('restaurants/thaiHouse');
-    this.restaurant = this.restaurantDoc.valueChanges();
   }
 
   ngOnInit(): void {

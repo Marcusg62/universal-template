@@ -1,0 +1,28 @@
+.highZ {
+  z-index: 10 !important;
+}
+
+
+
+.header {
+  width: 100%;
+  font-weight: lighter;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+
+.restaurantLogo {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 500px;
+  max-height: 300px;
+  width: auto;
+  margin-top: 1rem !important;
+}
+
+.split {
+  display: flex;
+  justify-content: space-between;
+}

@@ -1,0 +1,25 @@
+<section [id]="group.name" class="menu-section">
+
+
+  <mat-card class="groupTitle">
+    <mat-card-title class="groupTitleText">{{group.name}}</mat-card-title>
+    <mat-card-subtitle>{{group.description}}</mat-card-subtitle>
+    <img *ngIf="group.imgURL" width="100%" mat-card-image loading="lazy" [src]="group.imgURL"
+      [alt]="'Photo of ' + group.name">
+  </mat-card>
+
+
+  <mat-card class="menuItem" *ngFor="let menuItem of returnGroupArray(group.name)" (click)="openItem(menuItem)">
+    <mat-card-content class="menuItemContent">
+      <p class="mb-0"><b>{{menuItem.name}}</b><span class="notAvailable" *ngIf='!menuItem.available'> Not
+          Available</span></p>
+      <p *ngIf="menuItem.description" class="description left mt-0 mb-0 ">{{menuItem.description}}</p>
+      <p class="accent-color price" *ngFor="let price of menuItem.basePrices">
+        <span *ngIf="price.type != 'Regular'">{{price.type}}:</span> {{price.price | currency}}
+      </p>
+      <img *ngIf="menuItem.imgURL" loading='lazy' width='125px' style="height: auto; width: 125px;" st mat-card-image
+        [src]="menuItem.imgURL" alt="Photo of food" />
+    </mat-card-content>
+  </mat-card>
+
+</section>

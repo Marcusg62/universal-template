@@ -13,7 +13,8 @@ export const environment = {
     messagingSenderId: "140381093941",
     appId: "1:140381093941:web:cd0790835c5f72ca2e717c",
     measurementId: "G-HHH3DVT0T9"
-  }
+  },
+  restaurantID: 'thaiHouse'
 };
 
 /*

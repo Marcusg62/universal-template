@@ -1,0 +1,45 @@
+<mat-card style="background-color: #fbfbfc !important">
+  <img class="restaurantLogo" mat-card-image [src]="restaurant.imageLinks.logo"
+    [alt]="restaurant.displayName + ' Logo'" />
+  <div class="header">
+    <h1>{{restaurant.displayName}}</h1>
+
+    <div *ngIf="!restaurant.takesDelivery">
+      <p class="txt-bold">Available for Pickup Only</p>
+    </div>
+
+    <!-- <p class="">Lunch Served Everyday 11am-3pm</p> -->
+    <div class="split">
+      <a href="">
+        <button mat-flat-button color="primary" class="centerButton">Get Directions
+          <mat-icon mat-icon-button aria-hidden="true">directions</mat-icon>
+        </button>
+      </a>
+      <a style="color: unset" [href]="'tel:' + restaurant.phoneNum">
+        <button mat-button>{{restaurant.phoneNum}}</button>
+      </a>
+      <button mat-flat-button color="accent" (click)="openOrderDetails()">Edit Order
+        Details</button>
+    </div>
+    <p>
+      {{restaurant.address}}
+    </p>
+
+
+    <div *ngIf="restaurant.takesDelivery" class="m-b-16">
+      <p class="txt-bold">We Deliver!</p>
+      <div *ngIf="restaurant.deliveryFees as dFees">
+        <p *ngFor="let fee of dFees">{{fee.min}} - {{fee.max}} miles: {{fee.fee | currency}}</p>
+      </div>
+    </div>
+
+
+  </div>
+
+  <div class="header warning" *ngIf="!orderForm.canOrderNow">
+    <p class="txt-bold">We are Closed Right Now</p>
+    <p class="txt-bold">Next available Order Time is {{ orderForm.earliest_OrderDateTime.format("LLLL") }}</p>
+  </div>
+</mat-card>
+
+  <app-menu-group *ngFor="let group of orderForm.groups" [group]="group"></app-menu-group>

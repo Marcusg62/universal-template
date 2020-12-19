@@ -1,3 +1,5 @@
-<div>
-    {{ ((restaurant | async) | json)}}
+<div *ngIf="(orderForm.restaurantDoc | async) as r">
+    <div class="bg">
+        <app-menu [restaurant]="r"></app-menu>
+    </div>
 </div>

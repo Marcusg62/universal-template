@@ -1,0 +1,27 @@
+.menu-section {
+  width: 100%;
+  max-width: 700px;
+  margin: 1rem auto;
+  display: flex;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5px;
+  justify-items: stretch;
+
+
+}
+
+.groupTitle {
+  grid-column-start: 1;
+  grid-column-end: 3;
+}
+
+.menuItem {
+  grid-column-start: auto;
+  grid-column-end: span 1;
+}
+
+@media only screen and (min-width: 700px) {
+
+}

@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { ReactiveFormsModule } from '@angular/forms';
 
 
 import { environment } from '../environments/environment';
@@ -21,24 +22,34 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import {MatCardModule} from '@angular/material/card';
+import {MatSnackBarModule} from '@angular/material/snack-bar';
+import {MatDialogModule} from '@angular/material/dialog';
+import {MatButtonToggleModule} from '@angular/material/button-toggle';
+import {MatDividerModule} from '@angular/material/divider';
 
 
-
-
-
+import { OrderFormService } from './restaurants/order-form.service';
 import { HomeComponent } from './home/home.component'
 import { RestaurantComponent } from './restaurant/restaurant.component';
+import { MenuComponent } from './restaurants/menu/menu.component';
+import { MenuGroupComponent } from './restaurants/menu-group/menu-group.component';
+import { OrderDetailsComponent } from './restaurants/order-details/order-details.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     NavComponent,
     HomeComponent,
-    RestaurantComponent
+    RestaurantComponent,
+    MenuComponent,
+    MenuGroupComponent,
+    OrderDetailsComponent,
+    
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'serverApp' }),
     AngularFireModule.initializeApp(environment.firebaseConfig),
+    ReactiveFormsModule,
 
     AppRoutingModule,
     BrowserAnimationsModule,
@@ -48,9 +59,15 @@ import { RestaurantComponent } from './restaurant/restaurant.component';
     MatSidenavModule,
     MatIconModule,
     MatListModule,
-    MatCardModule
+    MatCardModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatButtonToggleModule,
+    MatDividerModule,
+
+
   ],
-  providers: [],
+  providers: [OrderFormService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

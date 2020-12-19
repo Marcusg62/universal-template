@@ -1,0 +1,16 @@
+::ng-deep .pac-container {
+  position: fixed !important;
+  margin-top: 1rem;
+}
+.orderDetails {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.orderDetails > * {
+  width: 100%;
+  margin: auto;
+  text-align: center;
+}
