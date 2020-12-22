@@ -1,0 +1,125 @@
+<form [formGroup]="menuItemForm" #addForm="ngForm">
+
+    <h3>{{data.menuItem.name}} <span class="notAvailable" *ngIf='!data.menuItem.available'> Not
+            Available</span></h3>
+
+    <mat-dialog-content>
+
+        <mat-card-subtitle>{{data.menuItem.description}}</mat-card-subtitle>
+
+        <div *ngIf="data.menuItem.detailImgURL && data.menuItem.detailImgURL!=''">
+            <img loading='lazy' style=" height: auto; width: 100%;" st [src]="data.menuItem.detailImgURL"
+                alt="Photo of food">
+        </div>
+
+        <!-- <pre>{{ this.data | json}}</pre> -->
+
+        <div *ngIf="data.menuItem.basePrices.length > 1" class="m-b-16">
+            <mat-button-toggle-group #group="matButtonToggleGroup" formControlName="size" [required]="true">
+                <mat-button-toggle *ngFor="let basePrice of sizeOptions" [value]="basePrice.type">
+                    {{basePrice.type}}
+                </mat-button-toggle>
+            </mat-button-toggle-group>
+        </div>
+
+
+        <div *ngFor="let mod of getModifiers()" class="m-l-4">
+
+
+
+            <mat-form-field *ngIf="mod.type == 'multi-dropdown'" color="accent">
+                <mat-label>{{ mod.displayName }}</mat-label>
+                <mat-select multiple color="accent" [formControlName]="mod.name" [required]="mod.isRequired">
+                    <mat-option *ngFor="let option of mod.options" [value]="option.value">{{option.value}}</mat-option>
+                </mat-select>
+                <mat-error>Required</mat-error>
+                <mat-hint *ngIf="!mod.isRequired">Optional</mat-hint>
+            </mat-form-field>
+
+
+            <mat-form-field *ngIf="mod.type == 'multi-dropdown-limited'" color="accent">
+                <mat-label>{{ mod.displayName }} (Choose {{ mod.limit }})</mat-label>
+                <mat-select multiple color="accent" [formControlName]="mod.name" [required]="mod.isRequired"
+                    (selectionChange)="multiSelectLimitCheck($event, mod.name, mod.limit)">
+                    <mat-option *ngFor="let option of mod.options" [value]="option.value">{{option.value}}</mat-option>
+                </mat-select>
+                <mat-hint *ngIf="!mod.isRequired">Optional</mat-hint>
+
+            </mat-form-field>
+
+            <mat-form-field *ngIf="mod.type == 'dropdown'" color="accent">
+                <mat-label>{{ mod.displayName }}</mat-label>
+                <mat-select color="accent" [formControlName]="mod.name" [required]="mod.isRequired">
+                    <mat-option *ngFor="let option of mod.options" [value]="option.value">{{option.value}}</mat-option>
+                </mat-select>
+                <mat-hint *ngIf="!mod.isRequired">Optional</mat-hint>
+                <mat-error>Required</mat-error>
+            </mat-form-field>
+
+            <mat-checkbox *ngIf="mod.type == 'boolean'" [formControlName]="mod.name">
+                {{ mod.displayName }}</mat-checkbox>
+            <div *ngIf="mod.type == 'increasable_dropdown'" formArrayName="Appetizer_Tray_Choice" color="accent">
+
+                <mat-label>{{ mod.displayName }}</mat-label>
+
+                <div *ngFor="let appControl of menuItemForm.get(mod.name).value; let i = index;"
+                    class="w-100 space-evenly">
+                    <mat-form-field class="w-60">
+                        <mat-select color="accent" [formControlName]="i" [required]="mod.isRequired">
+                            <mat-option *ngFor="let option of mod.options" [value]="option.value">{{option.value}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <button mat-flat-button color="primary" class="rounded_button mt-4"
+                        (click)="removeIncreasable(mod,i)">
+                        <mat-icon>remove</mat-icon>
+                    </button>
+                </div>
+                <div class="w-100 space-evenly">
+                    <mat-form-field class="w-60">
+                        <mat-select disabled>
+                            <mat-option>.........</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <button mat-flat-button color="primary" class="rounded_button mt-4" (click)="addIncreasable(mod)">
+                        <mat-icon>add</mat-icon>
+                    </button>
+                </div>
+
+            </div>
+            <div class="toggle" *ngIf="mod.type == 'toggle'">
+                <mat-button-toggle-group #group="matButtonToggleGroup" [formControlName]="mod.name">
+                    <mat-button-toggle *ngFor="let option of mod.options" [value]="option.value">
+                        {{option.value}}
+                    </mat-button-toggle>
+                </mat-button-toggle-group>
+            </div>
+
+        </div>
+
+        <mat-form-field class="example-form-field" class="m-t-8">
+            <input matInput type="text" placeholder="Special Instructions" formControlName="instructions">
+            <button mat-button matSuffix mat-icon-button aria-label="Clear" ([mat-dialog-close])="false"
+                (click)="clearInstructions()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </mat-form-field>
+
+        <div class="totalRow">
+            <button mat-flat-button color="primary" class="rounded_button">
+                <mat-icon (click)="decQuant()">remove</mat-icon> <span class="mx-4">{{ itemQuantity }}</span>
+                <mat-icon (click)="incQuant()">add</mat-icon>
+            </button>
+            <p class="text-right price">{{menuItemForm.get('price').value | currency }}</p>
+
+        </div>
+
+    </mat-dialog-content>
+    <mat-dialog-actions class="totalRow">
+
+        <button mat-stroked-button [mat-dialog-close]>Cancel</button>
+        <button [disabled]='!data.menuItem.available' mat-raised-button color="accent"
+            (click)="addToCart()">Add to Cart</button>
+
+    </mat-dialog-actions>
+</form>

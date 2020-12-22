@@ -11,9 +11,9 @@
 
   <mat-card class="menuItem" *ngFor="let menuItem of returnGroupArray(group.name)" (click)="openItem(menuItem)">
     <mat-card-content class="menuItemContent">
-      <p class="mb-0"><b>{{menuItem.name}}</b><span class="notAvailable" *ngIf='!menuItem.available'> Not
+      <p class='menuItemName'><b>{{menuItem.name}}</b><span class="notAvailable" *ngIf='!menuItem.available'> Not
           Available</span></p>
-      <p *ngIf="menuItem.description" class="description left mt-0 mb-0 ">{{menuItem.description}}</p>
+      <p *ngIf="menuItem.description" class="description">{{menuItem.description}}</p>
       <p class="accent-color price" *ngFor="let price of menuItem.basePrices">
         <span *ngIf="price.type != 'Regular'">{{price.type}}:</span> {{price.price | currency}}
       </p>

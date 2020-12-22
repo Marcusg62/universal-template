@@ -5,11 +5,10 @@ import { environment } from '../../../environments/environment';
 
 import { OrderFormService } from '../order-form.service';
 // import { ClosedComponent } from "../closed/closed.component";
-import { Router } from '@angular/router';
-import { MatAccordion } from '@angular/material/expansion';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Restaurant } from '../Interfaces.model';
 import { OrderDetailsComponent } from '../order-details/order-details.component';
-
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-menu',
@@ -19,17 +18,23 @@ import { OrderDetailsComponent } from '../order-details/order-details.component'
 
 export class MenuComponent implements OnInit {
   @Input() restaurant: Restaurant;
-
-  @ViewChild(MatAccordion) menu: MatAccordion;
+  @Input() modifiers: any;
+  @Input() groups: any;
+  @Input() menuItems: any;
 
   active;
   closedMessage;
   currentSection = 'Appetizer';
   isFirst;
   expanded = false;
-  constructor(public orderForm: OrderFormService, private afs: AngularFirestore, public dialog: MatDialog) {
-    console.log('can order now? ', orderForm.canOrderNow)
- 
+
+
+  constructor(public orderForm: OrderFormService, private route: ActivatedRoute, public dialog: MatDialog) {
+
+    this.modifiers = this.route.snapshot.data["modifiers"];
+    this.groups = this.route.snapshot.data["groups"].GroupDetail;
+    this.menuItems = this.route.snapshot.data["menuItems"];
+    // console.log('menuitems', this.menuItems)
   }
 
   onSectionChange(sectionId: string) {

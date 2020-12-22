@@ -12,6 +12,7 @@ import * as dayjs from 'dayjs'
 import * as timezone from 'dayjs/plugin/timezone' // import plugin
 import { BehaviorSubject } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
+
 dayjs.extend(timezone)
 
 
@@ -29,7 +30,6 @@ export class OrderFormService {
   public freeItemsCoupons = [];
   public couponSelections = {};
   public loading = false;
-  public restInfoLoading = false;
   deliveryFee = 0;
   tipPercent = 0.15;
   public orderObject: FormGroup;
@@ -50,239 +50,183 @@ export class OrderFormService {
   latest_OrderDateTime: dayjs.Dayjs;
   earliest_OrderDateTime: dayjs.Dayjs;
 
-  selectedRestaurant: BehaviorSubject<string>;
+  selectedRestaurant: BehaviorSubject<Restaurant>;
 
 
-  constructor(private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private afs: AngularFirestore, private fb: FormBuilder) {
-    this.restInfoLoading = true;
+  constructor(private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private fb: FormBuilder) {
+
+    // switch restaurant
+
+    if (route.snapshot?.url[1]?.path) {
+
+      this.restaurant = this.route.snapshot.data["restaurant"];
+
+      dayjs.tz.setDefault(this.restaurant.timezone)
+
+      this.current_DateTime = dayjs();
+      this.earliest_OrderDateTime = dayjs();//time of now
+
+      // console.log("restaurants:", this.restaurant)
+      let i = 0;
+      this.restaurant.orderStart.forEach(day => {
+        if (this.restaurant.orderStart[i] != '' && this.restaurant.orderEnd[i] != '') {
+          this.orderTimeMap[i] = this.createTimeList(this.restaurant.orderStart[i], this.restaurant.orderEnd[i]);
+        }
+        else {
+          this.closeDays.push(i);
+        }
+
+        i++;
+      });
+
+      // update earliest order time to have correct time
+      this.updateEarliestOrderTime();
+
+      let lastTime = this.restaurant.orderEnd[this.current_DateTime.day()];// 10 pm
+      let lastOrderDateTime = dayjs(lastTime, 'hh:mm a'); // TO DO: CHECK TO MAKE SURE THIS IS SET CORRECTLY, I BELIEVE IT SHOULD SET TO TODAY AT GIVEN TIME
+
+
+      this.checkOpen();
+
+      // set coupon vars for free item selection
+      this.restaurant.coupons.forEach((coupon: Coupon) => {
+        this.couponSelections[coupon.couponId] = '';
+
+      });
 
 
 
+      // console.log("earliest order date time: ", this.earliest_OrderDateTime)
+      this.orderObject = this.fb.group({
+        order_time: ['',],
+        mode: [this.mode,],
+        restaurantID: [this.restaurant.restaurantID,],
+        order_ISO_time: ['',], //set in cloud function on server
+        isFutureOrder: false,
+        futureOrderDateTime: this.earliest_OrderDateTime,
+        futureOrderTime: ['',],
+        futureOrderDate: ['',],
+        items: [[], [this.validLunchItems.bind(this), Validators.required]],
+        deliveryAddress: ['',],
+        aptNum: ['',],
+        phoneNum: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10)]],
+        first: ['', [Validators.required]],
+        last: ['', [Validators.required]],
+        email: ['', [Validators.email, Validators.required]],
+        orderInstructions: ['', Validators.maxLength(156)],
+        orderType: ['Pickup', [Validators.required]],
+        addAptNum: [false,],
+        coupons: new FormArray([]),
+        // napkin: false,
+        // utensil: false,
+        subTotal: [0,],
+        convenienceFee: [0],
+        tipAmount: [0],
+        tax: [0],
+        total: [0],
+        discount: [0],
+        apiVersion: '2.0'
 
-    this.selectedRestaurant = new BehaviorSubject(this.route.snapshot.url[1]?.path ? this.route.snapshot.url[1].path : '');;
-    const subscription = this.selectedRestaurant.subscribe(val => {
-
-      // switch restaurant
-      console.log('new restaurant', val)
-
-      if (val) {
-
-        this.restaurantDoc = afs.doc('restaurants/' + val).valueChanges();
-        afs.doc('restaurants/' + val).valueChanges().subscribe((doc: Restaurant) => {
-          this.restaurant = doc;
-
-          dayjs.tz.setDefault(this.restaurant.timezone)
-
-          this.current_DateTime = dayjs();
-          this.earliest_OrderDateTime = dayjs();//time of now
-
-          // console.log("restaurants:", this.restaurant)
-          let i = 0;
-          this.restaurant.orderStart.forEach(day => {
-            if (doc.orderStart[i] != '' && doc.orderEnd[i] != '') {
-              this.orderTimeMap[i] = this.createTimeList(doc.orderStart[i], doc.orderEnd[i]);
-            }
-            else {
-              this.closeDays.push(i);
-            }
-
-            i++;
-          });
-
-
-          // update earliest order time to have correct time
-          this.updateEarliestOrderTime();
-          // console.log('order easliest time date: ', this.earliest_OrderDateTime)
-
-          let lastTime = this.restaurant.orderEnd[this.current_DateTime.day()];// 10 pm
-          let lastOrderDateTime = dayjs(lastTime, 'hh:mm a'); // TO DO: CHECK TO MAKE SURE THIS IS SET CORRECTLY, I BELIEVE IT SHOULD SET TO TODAY AT GIVEN TIME
-
-          // if (this.current_DateTime.isAfter(lastOrderDateTime)) {
-
-          //   let temp = moment().add(1, 'days');
-          //   let stringStarter = temp.format('YYYY MM DD') + ' ';
-          //   let times = this.getTimeList(temp);
-
-          //   this.earliest_OrderDateTime = moment(stringStarter + times[temp.day()], 'YYYY MM DD hh:mm a').tz(this.restaurant.timezone).set('seconds', 0);
-          // }
-          this.checkOpen();
-
-          // set coupon vars for free item selection
-          doc.coupons.forEach((coupon: Coupon) => {
-            this.couponSelections[coupon.couponId] = '';
-          })
+      },
+        {
+          validators: this.validOrderTime.bind(this)
         });
 
-        afs.doc(`public/groups/${val}/Groups`).valueChanges().subscribe((doc: any) => {
-          this.groups = doc.GroupDetail;
-        });
+      this.afAuth.user.subscribe(async (val) => {
+        // console.log('user change', val);
+        this.user = val;
+        if (val != null) {
+          // console.log('user change', JSON.parse(JSON.stringify(val)));
+          let tempVal = JSON.parse(JSON.stringify(val));
+          this.updateUserData(tempVal);
 
-        afs.collection(`public/menu/${val}`).valueChanges().subscribe(val => {
-          this.menuList = val;
-        });
+        }
+      });
 
+      this.orderObject.get('futureOrderDateTime').valueChanges.subscribe((val: dayjs.Dayjs) => {
 
-        this.afs.collection(`public/modifiers/${val}`).valueChanges().subscribe(val => {
-          // console.log(val);
-          this.modifiers = val;
-        });
+        // gets time list for today or selected day
+        this.orderTimes = this.getTimeList(val);
 
-        // console.log("earliest order date time: ", this.earliest_OrderDateTime)
-        this.orderObject = this.fb.group({
-          order_time: ['',],
-          mode: [this.mode,],
-          restaurantID: [val,],
-          order_ISO_time: ['',], //set in cloud function on server
-          isFutureOrder: false,
-          futureOrderDateTime: this.earliest_OrderDateTime,
-          futureOrderTime: ['',],
-          futureOrderDate: ['',],
-          items: [[], [this.validLunchItems.bind(this), Validators.required]],
-          deliveryAddress: ['',],
-          aptNum: ['',],
-          phoneNum: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10)]],
-          first: ['', [Validators.required]],
-          last: ['', [Validators.required]],
-          email: ['', [Validators.email, Validators.required]],
-          orderInstructions: ['', Validators.maxLength(156)],
-          orderType: ['Pickup', [Validators.required]],
-          addAptNum: [false,],
-          coupons: new FormArray([]),
-          // napkin: false,
-          // utensil: false,
-          subTotal: [0,],
-          convenienceFee: [0],
-          tipAmount: [0],
-          tax: [0],
-          total: [0],
-          discount: [0],
-          apiVersion: '2.0'
+        this.orderObject.get('items').updateValueAndValidity({ emitEvent: true });
+        let orderEnd = dayjs();
+        let orderEndTime = this.restaurant.orderEnd[orderEnd.day()];
+        let starterString = orderEnd.format('YYYY MM DD') + ' ';
+        orderEnd = dayjs(starterString + orderEndTime, 'YYYY MM DD hh:mm a');
+        if (val.isAfter(orderEnd) || this.orderObject.get('futureOrderTime').value == '') {
+          // if is after ordering time, update time
+          // or if order time is unset
 
-        },
-          {
-            validators: this.validOrderTime.bind(this)
-          });
+          let times = this.getTimeList(val)
+          this.orderObject.patchValue({ 'futureOrderTime': times[0] }, { emitEvent: false });
+        }
 
-        this.afAuth.user.subscribe(async (val) => {
-          // console.log('user change', val);
-          this.user = val;
-          if (val != null) {
-            // console.log('user change', JSON.parse(JSON.stringify(val)));
-            let tempVal = JSON.parse(JSON.stringify(val));
-            this.updateUserData(tempVal);
+        this.updateCanOrderLunch(val);
+        this.orderObject.get('items').updateValueAndValidity();
 
-          }
-        });
+      });
+
+      this.orderObject.get('futureOrderTime').valueChanges.subscribe(val => {
+        let date = this.orderObject.get('futureOrderDateTime').value.format('YYYY MM DD') + ' ';
+        let newDateTime = dayjs(date + val, 'YYYY MM DD hh:mm a')
+        this.orderObject.patchValue({ 'futureOrderDateTime': newDateTime }, { emitEvent: false });
+        this.updateCanOrderLunch(newDateTime);
+      });
+
+      // reset value and update validators
+      this.orderObject.get('isFutureOrder').valueChanges.subscribe(val => {
+
+        this.updateEarliestOrderTime();
+        if (!this.orderObject.get('futureOrderDateTime').value) {
+          this.orderObject.patchValue({ 'futureOrderDateTime': this.earliest_OrderDateTime });
+        }
+        if (val === true) {
+          this.orderObject.get('futureOrderDateTime').setValidators(Validators.required);
+        } else {
+          this.orderObject.get('futureOrderDateTime').clearValidators();
+
+          this.updateCanOrderLunch(dayjs());
+        }
 
 
-        // this.orderObject.valueChanges.subscribe((val)=>{
-        //   console.log(val)
-        // })
-
-        this.orderObject.get('futureOrderDateTime').valueChanges.subscribe((val: dayjs.Dayjs) => {
-
-          // gets time list for today or selected day
-          this.orderTimes = this.getTimeList(val);
+      });
 
 
-
-
-          this.orderObject.get('items').updateValueAndValidity({ emitEvent: true });
-          let orderEnd = dayjs();
-          let orderEndTime = this.restaurant.orderEnd[orderEnd.day()];
-          let starterString = orderEnd.format('YYYY MM DD') + ' ';
-          orderEnd = dayjs(starterString + orderEndTime, 'YYYY MM DD hh:mm a');
-          if (val.isAfter(orderEnd) || this.orderObject.get('futureOrderTime').value == '') {
-            // if is after ordering time, update time
-            // or if order time is unset
-
-            let times = this.getTimeList(val)
-            this.orderObject.patchValue({ 'futureOrderTime': times[0] }, { emitEvent: false });
-          }
-
-
-
-
-          this.updateCanOrderLunch(val);
-          this.orderObject.get('items').updateValueAndValidity();
-
-        });
-
-        this.orderObject.get('futureOrderTime').valueChanges.subscribe(val => {
-          let date = this.orderObject.get('futureOrderDateTime').value.format('YYYY MM DD') + ' ';
-          let newDateTime = dayjs(date + val, 'YYYY MM DD hh:mm a')
-          this.orderObject.patchValue({ 'futureOrderDateTime': newDateTime }, { emitEvent: false });
-          this.updateCanOrderLunch(newDateTime);
-        });
-
-        // reset value and update validators
-        this.orderObject.get('isFutureOrder').valueChanges.subscribe(val => {
-
-          this.updateEarliestOrderTime();
-          if (!this.orderObject.get('futureOrderDateTime').value) {
-            this.orderObject.patchValue({ 'futureOrderDateTime': this.earliest_OrderDateTime });
-          }
-          if (val === true) {
-            this.orderObject.get('futureOrderDateTime').setValidators(Validators.required);
+      this.orderObject.get('orderType').valueChanges.subscribe(val => {
+        // console.log('checking delivery or pickup');
+        if (val == 'Delivery') {
+          this.orderObject.get('deliveryAddress').setValidators(Validators.required);
+          this.orderObject.get('deliveryAddress').setAsyncValidators(this.validDeliveryAddress.bind(this));
+          if (this.restaurant.deliveryMinSubtotal) {
+            this.orderObject.get('subTotal').setValidators(Validators.min(this.restaurant.deliveryMinSubtotal));
           } else {
-            this.orderObject.get('futureOrderDateTime').clearValidators();
-
-            this.updateCanOrderLunch(dayjs());
+            this.orderObject.get('subTotal').setValidators(Validators.min(15));
           }
-        });
 
+        } else {
+          this.orderObject.get('aptNum').setValue('');
+          this.orderObject.get('deliveryAddress').reset();
+          this.orderObject.get('deliveryAddress').clearValidators();
+          this.orderObject.get('deliveryAddress').clearAsyncValidators();
+          this.orderObject.get('deliveryAddress').updateValueAndValidity();
+          // this.orderObject.get('subTotal').setValidators(Validators.min(5));
+        }
+        this.calculateTotal();
+      });
 
+      this.orderObject.get('items').valueChanges.subscribe(val => {
+        this.calculateTotal();
+      });
 
+      this.orderObject.get('coupons').valueChanges.subscribe(val => {
+        this.calculateTotal();
 
-
-
-        // reset validators
-        this.orderObject.get('orderType').valueChanges.subscribe(val => {
-          // console.log('checking delivery or pickup');
-          if (val == 'Delivery') {
-            this.orderObject.get('deliveryAddress').setValidators(Validators.required);
-            this.orderObject.get('deliveryAddress').setAsyncValidators(this.validDeliveryAddress.bind(this));
-            if (this.restaurant.deliveryMinSubtotal) {
-              this.orderObject.get('subTotal').setValidators(Validators.min(this.restaurant.deliveryMinSubtotal));
-            } else {
-              this.orderObject.get('subTotal').setValidators(Validators.min(15));
-            }
-
-          } else {
-            this.orderObject.get('aptNum').setValue('');
-            this.orderObject.get('deliveryAddress').reset();
-            this.orderObject.get('deliveryAddress').clearValidators();
-            this.orderObject.get('deliveryAddress').clearAsyncValidators();
-            this.orderObject.get('deliveryAddress').updateValueAndValidity();
-            // this.orderObject.get('subTotal').setValidators(Validators.min(5));
-          }
-          this.calculateTotal();
-        });
-
-
-        this.orderObject.get('items').valueChanges.subscribe(val => {
-          this.calculateTotal();
-        });
-
-
-        this.orderObject.get('coupons').valueChanges.subscribe(val => {
-          this.calculateTotal();
-
-
-
-        });
-      }
-
-    }); // end switch restaurant
-
-
-
-
-
-
-    this.restInfoLoading = false;
+      });
+    }
 
   } // end constructor 
+
+
 
 
   checkOpen() {

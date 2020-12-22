@@ -1,17 +1,52 @@
 /* You can add global styles to this file, and also import other style files */
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+html,
+body {
+  height: 100%;
+}
 
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
 .cursor {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .m-auto {
-    margin: auto !important;
+  margin: auto !important;
 }
 
 .centerButton {
-    display: block;
-    margin: auto;
+  display: block;
+  margin: auto;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+
+
+// Import theming functions
+@import "~@angular/material/theming";
+
+$primary: mat-palette($mat-indigo);
+
+.mat-button-toggle-checked {
+  background-color: mat-color($primary);
+  // font-weight: bold;
+
+  .mat-button-toggle-label-content {
+    color: $light-primary-text;
+  }
+}
+
+
+.rounded_button {
+  border-radius: 25px !important;
 }

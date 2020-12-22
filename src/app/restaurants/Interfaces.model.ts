@@ -98,6 +98,13 @@ export interface Restaurant {
   waitTime: string,
   acceptsCheckins?: boolean,
   imageLinks: any,
+  googleMapsLink: string,
+  social: {
+    google: string,
+    yelp: string,
+    facebook: string,
+    twitter: string
+  }
 }
 
 export interface orderObject {

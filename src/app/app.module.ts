@@ -1,4 +1,4 @@
-import { BrowserModule } from '@angular/platform-browser';
+import { BrowserModule, BrowserTransferStateModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -21,11 +21,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import {MatCardModule} from '@angular/material/card';
-import {MatSnackBarModule} from '@angular/material/snack-bar';
-import {MatDialogModule} from '@angular/material/dialog';
-import {MatButtonToggleModule} from '@angular/material/button-toggle';
-import {MatDividerModule} from '@angular/material/divider';
+import { MatCardModule } from '@angular/material/card';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { MAT_DATE_FORMATS } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDayjsDateModule, MAT_DAYJS_DATE_ADAPTER_OPTIONS } from '@tabuckner/material-dayjs-adapter';
 
 
 import { OrderFormService } from './restaurants/order-form.service';
@@ -34,6 +40,11 @@ import { RestaurantComponent } from './restaurant/restaurant.component';
 import { MenuComponent } from './restaurants/menu/menu.component';
 import { MenuGroupComponent } from './restaurants/menu-group/menu-group.component';
 import { OrderDetailsComponent } from './restaurants/order-details/order-details.component';
+import { AddToCartComponent } from './restaurants/add-to-cart/add-to-cart.component';
+import { RestaurantResolver } from './resolvers/restaurant.resolver';
+import { GroupsResolver } from './resolvers/groups.resolver';
+import { ModifierResolver } from './resolvers/modifier.resolver';
+import { MenuResolver } from './resolvers/menu.resolver';
 
 @NgModule({
   declarations: [
@@ -44,12 +55,15 @@ import { OrderDetailsComponent } from './restaurants/order-details/order-details
     MenuComponent,
     MenuGroupComponent,
     OrderDetailsComponent,
-    
+    AddToCartComponent,
+
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'serverApp' }),
     AngularFireModule.initializeApp(environment.firebaseConfig),
     ReactiveFormsModule,
+    BrowserTransferStateModule,
+
 
     AppRoutingModule,
     BrowserAnimationsModule,
@@ -64,10 +78,14 @@ import { OrderDetailsComponent } from './restaurants/order-details/order-details
     MatDialogModule,
     MatButtonToggleModule,
     MatDividerModule,
-
+    MatFormFieldModule,
+    MatSelectModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatDayjsDateModule
 
   ],
-  providers: [OrderFormService],
+  providers: [OrderFormService, RestaurantResolver, GroupsResolver, ModifierResolver, MenuResolver],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

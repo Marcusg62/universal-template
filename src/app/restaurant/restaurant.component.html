@@ -1,5 +1,8 @@
-<div *ngIf="(orderForm.restaurantDoc | async) as r">
-    <div class="bg">
-        <app-menu [restaurant]="r"></app-menu>
-    </div>
+<div class="bg">
+    <app-menu [restaurant]="r"></app-menu>
 </div>
+<!-- <button aria-label="Go to Checkout Button" *ngIf="orderForm.cartLength > 0" (click)='orderForm.sortItems()'
+    routerLink="checkout" class="myFabButton" mat-fab color="primary">
+    <mat-icon>shopping_cart</mat-icon>
+    <span class="badge">{{orderForm.cartLength}}</span>
+</button> -->

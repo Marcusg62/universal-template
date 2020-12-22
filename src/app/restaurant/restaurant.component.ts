@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
-import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { Component, Input, OnInit } from '@angular/core';
+import { AngularFirestore } from '@angular/fire/firestore';
 import { OrderFormService } from '../restaurants/order-form.service';
 import { ActivatedRoute } from '@angular/router';
+import { Restaurant } from '../restaurants/Interfaces.model';
 
 @Component({
   selector: 'app-restaurant',
@@ -10,10 +10,12 @@ import { ActivatedRoute } from '@angular/router';
   styleUrls: ['./restaurant.component.scss']
 })
 export class RestaurantComponent implements OnInit {
+  @Input() r: Restaurant;
 
-  constructor(private route: ActivatedRoute, private afs: AngularFirestore, public orderForm: OrderFormService) {
+  constructor(private route: ActivatedRoute) {
 
-    this.orderForm.selectedRestaurant.next(this.route.snapshot.url[1].path)
+    this.r = this.route.snapshot.data["restaurant"];
+    // console.log('restaurant passed to RestaurantComponent', this.r)
 
   }
 

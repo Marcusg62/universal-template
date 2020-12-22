@@ -24,16 +24,19 @@ export class OrderDetailsComponent implements OnInit {
   orderTimes = [];
   message = '';
   OrderTimerMap = [];
-  dateFilter = date => !this.orderForm.closeDays.includes(date.day());
   futureOrderTime = new Subject<string>();
   public futureOrderTime$ = this.futureOrderTime.asObservable() //Has a $ 
 
   public futureOrderTime_sub;
 
+  public dateFilter = (d: dayjs.Dayjs): boolean => {
+    d = dayjs(d)
+    return !this.orderForm.closeDays.includes(d.day());
+  }
+
   constructor(
     private dialog: MatDialog, public afAuth: AngularFireAuth, public orderForm: OrderFormService,
     private cd: ChangeDetectorRef, public dialogRef: MatDialogRef<OrderDetailsComponent>) {
-
 
 
     this.futureOrderTime_sub = this.futureOrderTime$.subscribe(val => {

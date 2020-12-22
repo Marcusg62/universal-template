@@ -1,9 +1,31 @@
 .bg {
-    width: 100%;
-    height: 100%;
-    background-image: url("https://res.cloudinary.com/inhouse-orders/image/upload/w_1000,f_auto,q_auto/v1603484149/Fire%20Wok%20Faded%20Bg.jpg");
-    background-size: cover, cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+  background-image: url("https://res.cloudinary.com/inhouse-orders/image/upload/w_1000,f_auto,q_auto/v1603484149/Fire%20Wok%20Faded%20Bg.jpg");
+  background-size: cover, cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+.myFabButton {
+  position: fixed !important;
+  bottom: 1rem;
+  right: 2rem;
+//   padding: 1rem 2rem !important;
+//   border-radius: 40px !important;
+}
+
+.badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  font-size: 12px;
+  line-height: 13px;
+  border-radius: 50%;
+  width: 1.3rem;
+  height: 1.3rem;
+  background-color: #ff0000;
+  border: 4px solid #ff0000;
+  color: #ffffff;
+  text-align: center;
 }
