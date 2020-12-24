@@ -40,7 +40,11 @@ export class RestaurantResolver implements Resolve<Restaurant> {
         }
         else {
 
-            // FOR DEBUGGING, you can just return hardcoded_restaurant to see how it /should/ behave
+            // FOR DEBUGGING, you can just uncomment this block which uses a hardcoded object to see how it /should/ behave
+            // if (isPlatformServer(this.platformId)) {
+            //     this.transferState.set(restaurantId, hardcoded_restaurant);
+            //     return hardcoded_restaurant
+            // }
             // return hardcoded_restaurant
 
             return (this.afs.doc(`restaurants/${rId}`).valueChanges() as Observable<any>)

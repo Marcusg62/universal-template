@@ -3,7 +3,7 @@
     <img class="restaurantLogo" width="300px" height="300px" mat-card-image [src]="restaurant.imageLinks.logo"
       [alt]="restaurant.displayName + ' Logo'" />
     <div class="header">
-      <h1>{{restaurant.displayName}}</h1>
+      <h1>Hello {{restaurant.displayName}}</h1>
 
       <div *ngIf="!restaurant.takesDelivery">
         <p class="txt-bold">Available for Pickup Only</p>
