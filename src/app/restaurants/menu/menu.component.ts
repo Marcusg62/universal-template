@@ -31,9 +31,9 @@ export class MenuComponent implements OnInit {
 
   constructor(public orderForm: OrderFormService, private route: ActivatedRoute, public dialog: MatDialog) {
 
-    this.modifiers = this.route.snapshot.data["modifiers"];
-    this.groups = this.route.snapshot.data["groups"].GroupDetail;
-    this.menuItems = this.route.snapshot.data["menuItems"];
+    // this.modifiers = this.route.snapshot.data["modifiers"];
+    // this.groups = this.route.snapshot.data["groups"].GroupDetail;
+    // this.menuItems = this.route.snapshot.data["menuItems"];
     // console.log('menuitems', this.menuItems)
   }
 

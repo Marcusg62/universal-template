@@ -15,8 +15,8 @@ const routes: Routes = [
     component: RestaurantComponent,
     resolve: {
       restaurant: RestaurantResolver,
-      groups: GroupsResolver,
-      menuItems: MenuResolver
+      // groups: GroupsResolver,
+      // menuItems: MenuResolver
 
       // modifiers: ModifierResolver,
     }

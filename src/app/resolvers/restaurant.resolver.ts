@@ -6,7 +6,7 @@ import { makeStateKey, TransferState } from "@angular/platform-browser";
 import { Restaurant } from '../restaurants/Interfaces.model';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { first, tap } from 'rxjs/operators';
-
+import { hardcoded_restaurant } from '../../exampleRestaurant';
 
 @Injectable()
 export class RestaurantResolver implements Resolve<Restaurant> {
@@ -18,8 +18,8 @@ export class RestaurantResolver implements Resolve<Restaurant> {
 
     }
 
-    async resolve(route: ActivatedRouteSnapshot,
-        state: RouterStateSnapshot): Promise<Restaurant> {
+    resolve(route: ActivatedRouteSnapshot,
+        state: RouterStateSnapshot): Observable<any> {
 
         console.log('platformId', this.platformId)
 
@@ -40,11 +40,19 @@ export class RestaurantResolver implements Resolve<Restaurant> {
         }
         else {
 
-            let result: Restaurant = (await this.afs.doc('restaurants/' + rId).get().toPromise()).data() as Restaurant
-            if (isPlatformServer(this.platformId)) {
-                this.transferState.set(restaurantId, result);
-            }
-            return result;
+            // FOR DEBUGGING, you can just return hardcoded_restaurant to see how it /should/ behave
+            // return hardcoded_restaurant
+
+            return (this.afs.doc(`restaurants/${rId}`).valueChanges() as Observable<any>)
+                .pipe(
+                    first(),
+                    tap(restaurant => {
+                        if (isPlatformServer(this.platformId)) {
+                            this.transferState.set(restaurantId, restaurant);
+                            return restaurant
+                        }
+                    })
+                );
         }
     }
 }
