@@ -1,0 +1,20 @@
+<div class="login">
+  <div class="flexContainer">
+    <p class="upperHint">Choose a login method</p>
+  </div>
+  <button mat-raised-button id="google" (click)="googleSignin()" class="btn mx-auto mb-2 block">Sign In With
+    Google</button>
+  <button mat-raised-button id="fb" class="mb-2" (click)="fbSignin()">Sign In With Facebook
+  </button>
+  <hr>
+  <button mat-raised-button id="guest" (click)="anonSignin()">
+    <mat-icon class="icon">person</mat-icon>Guest Checkout
+  </button>
+
+  <p class="upperHint needHelp text-center" matTooltip="We use secure methods to handle your data. If you would like to order again in the future we recommend that you do not use Guest Checkout. This way you can save time as we will save your order information such as delivery address for easy use next time.
+    If you would like to sign out navigate to Order History.">
+    Need Help?</p>
+
+
+
+</div>

@@ -13,7 +13,7 @@ body {
 * {
   box-sizing: border-box;
 }
-.cursor {
+.cursor, .pointer {
   cursor: pointer;
 }
 
@@ -30,7 +30,14 @@ body {
   width: 100%;
 }
 
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+}
 
+.flex-center {
+  justify-content: center;
+}
 
 // Import theming functions
 @import "~@angular/material/theming";
@@ -46,7 +53,85 @@ $primary: mat-palette($mat-indigo);
   }
 }
 
-
 .rounded_button {
   border-radius: 25px !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.couponDescription {
+  width: 60%;
+  margin: 0;
+}
+
+.coupon {
+  margin: 0.5rem;
+  padding: 1rem 0.5rem !important;
+  width: 100%;
+  max-width: 350px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 2px dashed rgb(121, 121, 121);
+  padding: 1rem;
+}
+
+.couponContainer {
+  width: 100%;
+  max-width: 300px;
+  // flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0.5rem;
+  margin: auto;
+}
+
+.flexContainer {
+  display: flex;
+  /* or inline-flex */
+  justify-content: space-between;
+}
+
+.space-evenly {
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+.m-1 {
+  margin: 0.5rem;
+}
+.m-2 {
+  margin: 1rem;
+}
+.w-50 {
+  width: 50%;
+}
+
+.warning {
+  color: rgb(226, 64, 64);
+  margin: 0.25rem auto;
+}
+
+@media screen and (min-width: 400px) {
+  .l-w-100 {
+    width: 40%;
+  }
+
+  .couponContainer {
+    max-width: 400px;
+  }
+}
+
+mat-sidenav-content {
+  background-image: url("https://res.cloudinary.com/inhouse-orders/image/upload/w_1000,f_auto,q_auto/v1603484149/Fire%20Wok%20Faded%20Bg.jpg");
+  background-size: cover, cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow: hidden;
 }

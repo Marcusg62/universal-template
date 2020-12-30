@@ -19,7 +19,7 @@ export class RestaurantResolver implements Resolve<Restaurant> {
     }
 
     resolve(route: ActivatedRouteSnapshot,
-        state: RouterStateSnapshot): Observable<any> {
+        state: RouterStateSnapshot): Restaurant {
 
         console.log('platformId', this.platformId)
 
@@ -41,22 +41,22 @@ export class RestaurantResolver implements Resolve<Restaurant> {
         else {
 
             // FOR DEBUGGING, you can just uncomment this block which uses a hardcoded object to see how it /should/ behave
-            // if (isPlatformServer(this.platformId)) {
-            //     this.transferState.set(restaurantId, hardcoded_restaurant);
-            //     return hardcoded_restaurant
-            // }
-            // return hardcoded_restaurant
+            if (isPlatformServer(this.platformId)) {
+                this.transferState.set(restaurantId, hardcoded_restaurant);
+                return hardcoded_restaurant
+            }
+            return hardcoded_restaurant
 
-            return (this.afs.doc(`restaurants/${rId}`).valueChanges() as Observable<any>)
-                .pipe(
-                    first(),
-                    tap(restaurant => {
-                        if (isPlatformServer(this.platformId)) {
-                            this.transferState.set(restaurantId, restaurant);
-                            return restaurant
-                        }
-                    })
-                );
+            // return (this.afs.doc(`restaurants/${rId}`).valueChanges() as Observable<any>)
+            //     .pipe(
+            //         first(),
+            //         tap(restaurant => {
+            //             if (isPlatformServer(this.platformId)) {
+            //                 this.transferState.set(restaurantId, restaurant);
+            //                 return restaurant
+            //             }
+            //         })
+            //     );
         }
     }
 }

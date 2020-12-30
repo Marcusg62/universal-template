@@ -1,0 +1,272 @@
+<div class="container">
+  <mat-card class="checkout-card mt-3">
+    <mat-card-header>
+      <h3 class="header" id="checkoutTop">Complete Your Order</h3>
+    </mat-card-header>
+    <mat-card-content>
+
+      <!-- <pre *ngFor="let item of orderForm.cartItems"> {{ item | json}}</pre> -->
+      <section *ngIf="orderForm.cartLength > 0 else noItems">
+        <div *ngFor="let item of orderForm.cartItems" class="cartItem">
+          <div class="flexContainer">
+
+            <span class="flexContainer">{{item.quantity}} x {{item.name}} </span>
+
+            <div>
+              <span class="text-right"> {{item.price | currency}}</span>
+
+            </div>
+          </div>
+          <div class="flexContainer">
+            <div class="modifiers">
+
+              <!-- Start Modifiers -->
+              <!-- HARD CODED ITEMS -->
+              <p class=""><b>{{item.size}}</b></p>
+              <!-- Dynamic Modifiers -->
+              <p *ngFor="let mod of orderForm.modifiers" class="m-0">
+                <b *ngIf="item[mod.name]">
+                  <span *ngIf="mod.type == 'multi-dropdown'">Add: </span><span
+                    *ngIf="mod.type == 'incrementor'">{{mod.name}}:</span>
+                  <span *ngIf="mod.type != 'boolean'">{{ item[mod.name] }}</span><span *ngIf="mod.type == 'boolean'">{{
+                    mod.displayName }}</span></b>
+              </p>
+              <p class="" *ngIf="item.couponItem == true">Coupon Item</p>
+              <p class="" *ngIf="item.instructions"><b>Instructions: {{item.instructions}}</b></p>
+            </div>
+            <div class="removeButton" *ngIf="!item.couponItem == true">
+              <button mat-stroked-button color="warn" (click)="removeItem(item)">Remove </button>
+            </div>
+          </div>
+          <mat-divider></mat-divider>
+        </div>
+
+
+
+
+        <div>
+          <form [formGroup]="orderForm.orderObject">
+
+
+            <mat-form-field class="orderInstructions" appearance="fill" required="true">
+              <mat-label>Order Instructions</mat-label>
+              <textarea formControlName="orderInstructions" type="text" matInput
+                placeholder="Special order instructions"></textarea>
+            </mat-form-field>
+            <!-- <div class='w-100 mt-1'>
+                <mat-checkbox  formControlName="napkin">
+                 <h4>Include Napkin</h4> </mat-checkbox>
+              </div>
+              <div class='w-100 mt-1' >
+                <mat-checkbox  formControlName="utensil">
+                  <h4>Include Utensil</h4></mat-checkbox>
+              </div> -->
+          </form>
+          <div class="space-evenly flex-wrap">
+            <div class="w-50-left l-w-100">
+              <div class="toggle mb-2">
+                <p class="upperHint">Please leave a tip.</p>
+                <mat-button-toggle-group #tip="matButtonToggleGroup" aria-label="Tip Amount"
+                  (change)="tipChange(tip.value)" value=".15" name="tipValue" appearance="standard">
+                  <mat-button-toggle value=".15">15%</mat-button-toggle>
+                  <mat-button-toggle value=".20">20%</mat-button-toggle>
+                  <mat-button-toggle value=".30">30%</mat-button-toggle>
+                  <mat-button-toggle value="other">Other</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+            </div>
+            <div class="w-50-right total">
+              <p>SubTotal: </p>
+              <p> {{orderForm.orderObject.get('subTotal').value | currency}}</p>
+              <p *ngIf="orderForm.orderObject.get('discount').value != 0">Discount: </p>
+              <p *ngIf="orderForm.orderObject.get('discount').value != 0">
+                <b>{{orderForm.orderObject.get('discount').value | currency}}</b>
+              </p>
+              <p>Tax: </p>
+              <p> {{orderForm.orderObject.get('tax').value | currency}}</p>
+              <p>Convenience Fee: </p>
+              <p>{{orderForm.orderObject.get('convenienceFee').value | currency}}</p>
+              <p>Tip: </p>
+              <p>{{orderForm.orderObject.get('tipAmount').value | currency}}</p>
+
+              <p><b>Total: </b></p>
+              <p><b>{{orderForm.orderObject.get('total').value | currency}}</b></p>
+            </div>
+          </div>
+
+          <div class="space-evenly" *ngIf="tip.value == 'other' ">
+            <mat-form-field class="col-3 pb-0">
+              <span matSuffix>% &nbsp;</span>
+              <input min="0" type="number" matInput placeholder="Tip" [(ngModel)]="otherTipAmount">
+            </mat-form-field>
+            <button color="accent" mat-raised-button class="btnHeight col-1 align-content-center"
+              (click)="tipChange(tip.value)">OK</button>
+          </div>
+          <hr>
+        </div>
+        <div class="couponContainer">
+          <div *ngIf="orderForm.appliedCoupons.length > 0 else noCoupons">
+            <div *ngFor="let coupon of orderForm.appliedCoupons.controls let index = i">
+              <div class="coupon">
+                <h3 class="text-center">{{coupon.value.title}}</h3>
+                <div class="flex-wrap space-between">
+                  <span class="m-0">{{coupon.value.description}}</span>
+
+                  <button class="" mat-stroked-button color="warn" (click)="orderForm.removeCoupon(coupon)">Remove
+                  </button>
+
+                </div>
+                <p *ngIf="coupon.errors?.minSubtotal" class="text-danger">{{coupon.errors.minSubtotal}}</p>
+                <p *ngIf="coupon.errors?.orderType" class="text-danger">{{coupon.errors.orderType}}</p>
+                <p *ngIf="coupon.errors?.mixable" class="text-danger">{{coupon.errors.mixable}}</p>
+              </div>
+
+            </div>
+          </div>
+          <ng-template #noCoupons>
+            <div *ngFor="let coupon of orderForm.freeItemsCoupons">
+              <div *ngIf="coupon.active" class="coupon">
+                <h3 class="text-center">{{coupon.title}}</h3>
+                <div class="space-evenly">
+                  <p class="m-0">{{coupon.description}}</p>
+
+                  <button mat-raised-button class="" color="accent" (click)="orderForm.addCoupon(coupon)">Add</button>
+
+                </div>
+                <div class="space-evenly">
+                  <mat-form-field *ngIf="coupon.type == 'freeItem' && coupon.freeItems.length > 1" class="">
+                    <mat-label>Choose free item: </mat-label>
+                    <mat-select (selectionChange)="orderForm.updateCouponSelection($event, coupon)">
+                      <mat-option *ngFor="let item of coupon.freeItems" [value]="item">
+                        {{item}}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+
+              </div>
+
+            </div>
+          </ng-template>
+        </div>
+        <hr>
+        <div class="text-center">
+          <div class="space-between simple-border">
+            <div class="space-between m-2">
+              <p class="m-1">Order Type:</p>
+              <button class="m-0 address" (click)="openOrderDetails()" mat-raised-button
+                color="accent">{{orderForm.orderObject.get('orderType').value}}</button>
+            </div>
+            <div class="space-between m-1">
+              <p class="m-1">Time: </p>
+              <button mat-raised-button color="accent" class="m-0"
+                *ngIf="orderForm.orderObject.get('isFutureOrder').value == false" (click)="openOrderDetails()">Now
+              </button>
+              <button mat-raised-button color="accent" class="m-0"
+                *ngIf="orderForm.orderObject.get('isFutureOrder').value == true" (click)="openOrderDetails()">
+                {{orderForm.orderObject.get('futureOrderDateTime').value.format('LLLL')}}
+              </button>
+            </div>
+            <p *ngIf="orderForm.orderObject.get('orderType').value == 'Delivery'">Deliver To:
+              {{orderForm.orderObject.get('deliveryAddress').value}},
+              {{orderForm.orderObject.get('aptNum').value}}</p>
+          </div>
+
+          <p class="edit text-danger m-1" (click)="openOrderDetails()"
+            *ngIf="orderForm.orderObject.errors?.invalidOrderTime">You have not selected
+            a valid order time
+          </p>
+          <p class="edit text-danger m-1" (click)="openOrderDetails()"
+            *ngIf="orderForm.orderObject.get('deliveryAddress').invalid"> You have not input a valid delivery address.
+          </p>
+          <mat-divider></mat-divider>
+          <p class="text-danger txt-left p-16" *ngIf="orderForm.orderObject.get('items').errors?.lunchItemError">ERROR:
+            You have lunch items in your cart. Please remove the items or change the order time. </p>
+        </div>
+        <!-- TO DO: SET DYNAMIC LUNCH TIME -->
+        <div>
+          <h3 class="text-center">Checkout</h3>
+
+          <div *ngIf="!(afAuth.user | async) else loggedIn">
+            <p class="text-center mt-2 mb-2">Sign in to save contact info for next time or select "Guest Checkout."
+            </p>
+            <app-login></app-login>
+          </div>
+        </div>
+        <ng-template #loggedIn>
+          <form (ngSubmit)="openPaymentDialog($event)" [formGroup]="orderForm.orderObject" #addForm="ngForm">
+            <p class="upperHint">Contact Info. We will contact you if there are any issues. </p>
+            <div class="userInfo">
+              <mat-form-field class="w-50" appearance="fill" required="true">
+                <mat-label>First</mat-label>
+                <input autocomplete="given-name" formControlName="first" type="text" matInput placeholder="First Name">
+                <mat-error>Required</mat-error>
+              </mat-form-field>
+              <mat-form-field class="w-50" appearance="fill" required="true">
+                <mat-label>Last</mat-label>
+                <input autocomplete="family-name" formControlName="last" type="text" matInput placeholder="Last Name">
+                <mat-error>Required</mat-error>
+              </mat-form-field>
+              <mat-form-field class="w-100" appearance="fill" required="true">
+                <mat-label>Email</mat-label>
+                <input autocomplete="email" formControlName="email" type="email" matInput placeholder="Email">
+                <mat-error>Required</mat-error>
+              </mat-form-field>
+              <mat-form-field class="w-100" appearance="fill" required="true">
+                <mat-label>Phone Number</mat-label>
+                <input autocomplete="tel-national" formControlName="phoneNum" type="tel" matInput placeholder="Phone Number">
+                <mat-error>Required</mat-error>
+              </mat-form-field>
+            </div>
+
+
+            <mat-divider></mat-divider>
+            <p class="text-danger"
+              *ngIf="orderForm.orderObject.get('subTotal').invalid && orderForm.restaurant.deliveryMinSubtotal">Your
+              subtotal must be at least
+              $5 for pickup orders and ${{orderForm.restaurant.deliveryMinSubtotal}} for delivery. </p>
+            <p class="text-danger"
+              *ngIf="orderForm.orderObject.get('subTotal').invalid && !orderForm.restaurant.deliveryMinSubtotal">Your
+              subtotal must be at least
+              $5 for pickup orders and $15 for delivery. </p>
+
+
+            <p class="edit text-danger m-1" (click)="openOrderDetails()"
+              *ngIf="orderForm.orderObject.errors?.invalidOrderTime">You have not selected
+              a valid order time
+            </p>
+
+            <div *ngIf="orderForm.appliedCoupons.length > 0" class="flex flex-c flex-wrap">
+              <div *ngFor="let coupon of orderForm.appliedCoupons.controls let index = i">
+                <div *ngIf="coupon.errors">
+                  <div class="flex-wrap space-between">
+                    <p *ngIf="coupon.errors?.minSubtotal" class="text-danger">{{coupon.value.title}}:
+                      {{coupon.errors.minSubtotal}}</p>
+                    <p *ngIf="coupon.errors?.orderType" class="text-danger">{{coupon.value.title}}:
+                      {{coupon.errors.orderType}}</p>
+                    <p *ngIf="coupon.errors?.mixable" class="text-danger">{{coupon.value.title}}:
+                      {{coupon.errors.mixable}}</p>
+                    <button routerLink="/" mat-stroked-button class="m_5" color="primary">
+                      Add Items
+                    </button>
+                    <button class="m-l-8" mat-stroked-button color="warn"
+                      (click)="orderForm.removeCoupon(coupon)">Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <mat-spinner class="spinner" *ngIf="this.loading"></mat-spinner>
+            <button type='submit' mat-raised-button class="w-100" color="primary">Make Payment</button>
+          </form>
+        </ng-template>
+      </section>
+      <ng-template #noItems>
+        <p class="text-center mb-3">No items in cart. 😩</p>
+        <button mat-raised-button routerLink="../" class="w-100 mt-4" color="accent">View Menu </button>
+      </ng-template>
+    </mat-card-content>
+  </mat-card>
+</div>

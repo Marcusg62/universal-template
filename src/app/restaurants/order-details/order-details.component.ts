@@ -93,6 +93,11 @@ export class OrderDetailsComponent implements OnInit {
   //   });
   // }
 
+  timeChange($event) {
+    let newDateTime = this.orderForm.setDayjsTime(this.orderForm.orderObject.get('futureOrderDateTime').value, $event.value)
+    this.orderForm.orderObject.patchValue({ 'futureOrderDateTime': newDateTime })
+  }
+
 
   runcd() {
     this.cd.detectChanges();

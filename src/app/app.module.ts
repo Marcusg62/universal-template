@@ -32,6 +32,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MAT_DATE_FORMATS } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDayjsDateModule, MAT_DAYJS_DATE_ADAPTER_OPTIONS } from '@tabuckner/material-dayjs-adapter';
+import {MatProgressBarModule} from '@angular/material/progress-bar';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 
 
 import { OrderFormService } from './restaurants/order-form.service';
@@ -45,6 +47,12 @@ import { RestaurantResolver } from './resolvers/restaurant.resolver';
 import { GroupsResolver } from './resolvers/groups.resolver';
 import { ModifierResolver } from './resolvers/modifier.resolver';
 import { MenuResolver } from './resolvers/menu.resolver';
+import { GooglePlacesDirective } from './google-places.directive';
+import { CheckoutComponent } from './restaurants/checkout/checkout.component';
+import { LoginComponent } from './login/login.component';
+import { PaymentDialogComponent } from './restaurants/payment-dialog/payment-dialog.component';
+import { OrderStatusComponent } from './restaurants/order-status/order-status.component';
+import { AccountComponent } from './account/account.component';
 
 @NgModule({
   declarations: [
@@ -56,6 +64,12 @@ import { MenuResolver } from './resolvers/menu.resolver';
     MenuGroupComponent,
     OrderDetailsComponent,
     AddToCartComponent,
+    GooglePlacesDirective,
+    CheckoutComponent,
+    LoginComponent,
+    PaymentDialogComponent,
+    OrderStatusComponent,
+    AccountComponent,
 
   ],
   imports: [
@@ -82,7 +96,9 @@ import { MenuResolver } from './resolvers/menu.resolver';
     MatSelectModule,
     MatInputModule,
     MatDatepickerModule,
-    MatDayjsDateModule
+    MatDayjsDateModule,
+    MatProgressBarModule,
+    MatProgressSpinnerModule
 
   ],
   providers: [OrderFormService, RestaurantResolver, GroupsResolver, ModifierResolver, MenuResolver],

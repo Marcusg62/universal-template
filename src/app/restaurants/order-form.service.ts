@@ -1,113 +1,73 @@
 import { Injectable, ApplicationRef, NgZone } from '@angular/core';
-
-import { environment } from '../../environments/environment';
-
 import { FormGroup, FormBuilder, AbstractControl, Validators, ValidationErrors, FormArray, FormControl } from '@angular/forms';
 import { CartItem } from './Interfaces.model';
 import { AngularFireAuth } from '@angular/fire/auth';
-import { AngularFirestore } from '@angular/fire/firestore';
 import { Restaurant, Coupon } from './Interfaces.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import * as dayjs from 'dayjs'
 import * as timezone from 'dayjs/plugin/timezone' // import plugin
-import { BehaviorSubject } from 'rxjs';
+import * as  customParseFormat from 'dayjs/plugin/customParseFormat'
+
+import { BehaviorSubject, Subject } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
+import { timestamp } from 'rxjs/operators';
 
 dayjs.extend(timezone)
-
+dayjs.extend(customParseFormat)
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderFormService {
 
-  public user;
-  public restaurant: Restaurant;
-  public userDocData;
-  public modifiers;
-  public groups;
-  public menuList = [];
-  public freeItemsCoupons = [];
-  public couponSelections = {};
-  public loading = false;
-  deliveryFee = 0;
-  tipPercent = 0.15;
-  public orderObject: FormGroup;
-  orderTimeMap = [];
-  orderTimes = [];
-  closeDays = [];
-  restaurantDoc;
-  // couponApplied = false;
+
   mode = 'test';
   // mode = 'prod';
 
-
-  // close;
-  canOrderNow = false;
-  canOrderLunch = false;
-
-  current_DateTime: dayjs.Dayjs;
-  latest_OrderDateTime: dayjs.Dayjs;
-  earliest_OrderDateTime: dayjs.Dayjs;
-
-  selectedRestaurant: BehaviorSubject<Restaurant>;
+  public orderObject: FormGroup;
+  public restaurant$: BehaviorSubject<Restaurant> | null = new BehaviorSubject(null);
+  public restaurant: Restaurant;
+  public menuList: Array<any> = [];
+  public orderTimeMap: Array<any> = [];
+  public closeDays: Array<any> = [];
+  public tipPercent = 0.15;
+  public deliveryFee = 0;
+  public couponSelections = {}
+  public freeItemsCoupons = [];
+  public loading = false;
+  public modifiers = [];
+  public groups;
 
 
   constructor(private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private fb: FormBuilder) {
 
-    // switch restaurant
+    this.restaurant$.subscribe(val => {
+      this.restaurant = val;
+      this.initializeOrderObject()
+      console.log('val', this.restaurant)
+    })
 
-    if (route.snapshot?.url[1]?.path) {
 
-      this.restaurant = this.route.snapshot.data["restaurant"];
+  } // end constructor 
 
+
+  initializeOrderObject() {
+
+    console.log('initializing order object', this.restaurant)
+    if (this.restaurant) {
+      console.log('has restaurant')
       dayjs.tz.setDefault(this.restaurant.timezone)
+      this.getCloseDays();
 
-      this.current_DateTime = dayjs();
-      this.earliest_OrderDateTime = dayjs();//time of now
-
-      // console.log("restaurants:", this.restaurant)
-      let i = 0;
-      this.restaurant.orderStart.forEach(day => {
-        if (this.restaurant.orderStart[i] != '' && this.restaurant.orderEnd[i] != '') {
-          this.orderTimeMap[i] = this.createTimeList(this.restaurant.orderStart[i], this.restaurant.orderEnd[i]);
-        }
-        else {
-          this.closeDays.push(i);
-        }
-
-        i++;
-      });
-
-      // update earliest order time to have correct time
-      this.updateEarliestOrderTime();
-
-      let lastTime = this.restaurant.orderEnd[this.current_DateTime.day()];// 10 pm
-      let lastOrderDateTime = dayjs(lastTime, 'hh:mm a'); // TO DO: CHECK TO MAKE SURE THIS IS SET CORRECTLY, I BELIEVE IT SHOULD SET TO TODAY AT GIVEN TIME
-
-
-      this.checkOpen();
-
-      // set coupon vars for free item selection
-      this.restaurant.coupons.forEach((coupon: Coupon) => {
-        this.couponSelections[coupon.couponId] = '';
-
-      });
-
-
-
-      // console.log("earliest order date time: ", this.earliest_OrderDateTime)
       this.orderObject = this.fb.group({
         order_time: ['',],
         mode: [this.mode,],
-        restaurantID: [this.restaurant.restaurantID,],
+        restaurantID: [this.restaurant.restaurantID],
         order_ISO_time: ['',], //set in cloud function on server
-        isFutureOrder: false,
-        futureOrderDateTime: this.earliest_OrderDateTime,
-        futureOrderTime: ['',],
-        futureOrderDate: ['',],
+        isFutureOrder: this.initIsFutureOrder(),
+        futureOrderDateTime: [this.initfutureOrderDateTime(),],
         items: [[], [this.validLunchItems.bind(this), Validators.required]],
-        deliveryAddress: ['',],
+        deliveryAddress: ['', {updateOn: 'blur'}],
         aptNum: ['',],
         phoneNum: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10)]],
         first: ['', [Validators.required]],
@@ -117,81 +77,61 @@ export class OrderFormService {
         orderType: ['Pickup', [Validators.required]],
         addAptNum: [false,],
         coupons: new FormArray([]),
-        // napkin: false,
-        // utensil: false,
+        includeUtensils: true,
         subTotal: [0,],
         convenienceFee: [0],
         tipAmount: [0],
         tax: [0],
         total: [0],
         discount: [0],
-        apiVersion: '2.0'
+        apiVersion: '3.0'
 
       },
         {
           validators: this.validOrderTime.bind(this)
-        });
-
-      this.afAuth.user.subscribe(async (val) => {
-        // console.log('user change', val);
-        this.user = val;
-        if (val != null) {
-          // console.log('user change', JSON.parse(JSON.stringify(val)));
-          let tempVal = JSON.parse(JSON.stringify(val));
-          this.updateUserData(tempVal);
-
         }
-      });
+      );
+
+
+
 
       this.orderObject.get('futureOrderDateTime').valueChanges.subscribe((val: dayjs.Dayjs) => {
 
         // gets time list for today or selected day
-        this.orderTimes = this.getTimeList(val);
+        let orderTimes = this.getTimeList(val);
 
-        this.orderObject.get('items').updateValueAndValidity({ emitEvent: true });
-        let orderEnd = dayjs();
-        let orderEndTime = this.restaurant.orderEnd[orderEnd.day()];
-        let starterString = orderEnd.format('YYYY MM DD') + ' ';
-        orderEnd = dayjs(starterString + orderEndTime, 'YYYY MM DD hh:mm a');
-        if (val.isAfter(orderEnd) || this.orderObject.get('futureOrderTime').value == '') {
-          // if is after ordering time, update time
-          // or if order time is unset
+        let newDateTime = val;
+        newDateTime = this.setDayjsTime(newDateTime, orderTimes[0])
+        this.orderObject.patchValue({ 'futureOrderDateTime': newDateTime }, { emitEvent: false })
 
-          let times = this.getTimeList(val)
-          this.orderObject.patchValue({ 'futureOrderTime': times[0] }, { emitEvent: false });
-        }
+        this.orderObject.get('items').updateValueAndValidity({ emitEvent: true }); // i assume this is for checking lunch items
 
-        this.updateCanOrderLunch(val);
-        this.orderObject.get('items').updateValueAndValidity();
 
-      });
-
-      this.orderObject.get('futureOrderTime').valueChanges.subscribe(val => {
-        let date = this.orderObject.get('futureOrderDateTime').value.format('YYYY MM DD') + ' ';
-        let newDateTime = dayjs(date + val, 'YYYY MM DD hh:mm a')
-        this.orderObject.patchValue({ 'futureOrderDateTime': newDateTime }, { emitEvent: false });
-        this.updateCanOrderLunch(newDateTime);
       });
 
       // reset value and update validators
       this.orderObject.get('isFutureOrder').valueChanges.subscribe(val => {
+        console.log('this.orderObject: ', this.orderObject.value)
 
-        this.updateEarliestOrderTime();
-        if (!this.orderObject.get('futureOrderDateTime').value) {
-          this.orderObject.patchValue({ 'futureOrderDateTime': this.earliest_OrderDateTime });
+
+        if (this.orderObject.get('futureOrderDateTime').value == '') {
+          console.log('setting future order date time')
+          this.orderObject.patchValue({ 'futureOrderDateTime': this.getEarliestAvailableDateTime() });
         }
-        if (val === true) {
+        if (val == true) {
           this.orderObject.get('futureOrderDateTime').setValidators(Validators.required);
         } else {
           this.orderObject.get('futureOrderDateTime').clearValidators();
-
-          this.updateCanOrderLunch(dayjs());
+          this.orderObject.patchValue({ 'futureOrderDateTime': '' });
         }
-
-
       });
 
 
+
+
+
+
+      // reset validators
       this.orderObject.get('orderType').valueChanges.subscribe(val => {
         // console.log('checking delivery or pickup');
         if (val == 'Delivery') {
@@ -214,389 +154,128 @@ export class OrderFormService {
         this.calculateTotal();
       });
 
+
       this.orderObject.get('items').valueChanges.subscribe(val => {
         this.calculateTotal();
       });
 
+
       this.orderObject.get('coupons').valueChanges.subscribe(val => {
         this.calculateTotal();
 
+
+
       });
-    }
-
-  } // end constructor 
 
 
+    } else {
 
+      console.log('does not have restaurant')
 
-  checkOpen() {
-    let orderDay: dayjs.Dayjs;
-    let rightNow = dayjs();
-    let stringStart = rightNow.format('YYYY MM DD') + ' ';
-    // console.log('check open restaurantDoc', this.restaurant);
-    if (this.closeDays.indexOf(rightNow.day()) != -1) {
-      this.canOrderNow = false;
-      this.orderObject.patchValue({ 'isFutureOrder': true });
-    }
-    else {
-      let endTime = this.restaurant.orderEnd[rightNow.day()]
-      let startTime = this.restaurant.orderStart[rightNow.day()]
-      let endDateTime = dayjs(stringStart + endTime, 'YYYY MM DD hh:mm a')
-      let startDateTime = dayjs(stringStart + startTime, 'YYYY MM DD hh:mm a')
-      if (rightNow.isAfter(endDateTime) || rightNow.isBefore(startDateTime)) {
-        this.canOrderNow = false;
-        this.orderObject.patchValue({ 'isFutureOrder': true });
-      } else {
-        // console.log("not future order")
-        this.canOrderNow = true;
-        // this.orderObject.patchValue({ 'isFutureOrder': false });
-      }
-    }
-    // let todayStartTime = this.restaurant.orderStart[currentDate.getDay()];
-    // let todayEndTime = this.restaurant.orderEnd[currentDate.getDay()];
-    // let start = new Date(currentDate);
-    // let end = new Date(currentDate);
-    // // console.log('today start time', todayStartTime);
-    // // console.log('today start time', todayEndTime);
-    // start.setHours(this.getHoursFromString(todayStartTime), this.getMinutesFromString(todayStartTime), 0, 0);
-    // end.setHours(this.getHoursFromString(todayEndTime), this.getMinutesFromString(todayEndTime), 0, 0);
+      this.orderObject = this.fb.group({
+        order_time: ['',],
+        mode: [this.mode,],
+        restaurantID: [this.restaurant ? this.restaurant.restaurantID : '',],
+        order_ISO_time: ['',], //set in cloud function on server
+        isFutureOrder: false,
+        futureOrderDateTime: ['',],
+        items: [[]],
+        deliveryAddress: ['',],
+        aptNum: ['',],
+        phoneNum: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10)]],
+        first: ['', [Validators.required]],
+        last: ['', [Validators.required]],
+        email: ['', [Validators.email, Validators.required]],
+        orderInstructions: ['', Validators.maxLength(156)],
+        orderType: ['Pickup', [Validators.required]],
+        addAptNum: [false,],
+        coupons: new FormArray([]),
+        includeUtensils: true,
+        subTotal: [0,],
+        convenienceFee: [0],
+        tipAmount: [0],
+        tax: [0],
+        total: [0],
+        discount: [0],
+        apiVersion: '3.0'
 
-    // // console.log('today start time', start);
-    // // console.log('today end time', end);
-    // if (currentDate > end || currentDate < start) {
-    //   this.canOrderNow = false;
-    //   this.orderObject.patchValue({ 'isFutureOrder': true });
-    // } else {
-    //   this.canOrderNow = true;
-    //   this.orderObject.patchValue({ 'isFutureOrder': false });
-    // }
-
-
-  }
-
-  getMinute(timeString) {
-    let time = timeString;
-    let hours = Number(time.match(/^(\d+)/)[1]);
-    let minutes = Number(time.match(/:(\d+)/)[1]);
-    let AMPM = time.match(/\s(.*)$/)[1];
-    if (AMPM == "pm" && hours < 12) hours = hours + 12;
-    if (AMPM == "am" && hours == 12) hours = hours - 12;
-    let sHours = hours.toString();
-    let sMinutes = minutes.toString();
-    if (hours < 10) sHours = "0" + sHours;
-    if (minutes < 10) sMinutes = "0" + sMinutes;
-    let totalMinutes = hours * 60 + minutes
-    // alert(sHours + ":" + sMinutes + "@" + totalMinutes.toString());
-    return totalMinutes
-  }
-
-  getMinutesFromString(timeString) {
-    return timeString.match(/:(\d+)/)[1];
-  }
-  getHoursFromString(timeString: string) {
-    let hours = Number(timeString.match(/^(\d+)/)[1]);
-    // console.log('time sub string', );
-    if (timeString.substring(timeString.length - 2) == 'pm' && timeString.substring(0, 2) != "12") {
-      hours += 12;
-    }
-    return hours;
-  }
-
-
-  createTimeList(StartTime, EndTime) {
-
-    let x = 10; // minutes interval
-    let times = []; // time array
-    let tt = this.getMinute(StartTime); // start time
-    let endMinute = this.getMinute(EndTime);
-    let ap = ['am', 'pm']; // AM-PM
-
-    // loop to increment the time and push results in array
-    for (let i = 0; tt < endMinute; i++) {
-      let hh = Math.floor(tt / 60); // getting hours of day in 0-24 format
-      let mm = (tt % 60); // getting minutes of the hour in 0-55 format
-      let hourString = (hh % 12) === 0 ? '12' : (hh % 12).toString();
-      times[i] = ("0" + hourString).slice(-2) + ':' + ("0" + mm).slice(-2) + ' ' + ap[Math.floor(hh / 12)];
-      // pushing data in array in [00:00 - 12:00 AM/PM format]
-      tt = tt + x;
-    }
-
-    return times;
-  }
-
-  setOrderType(val) {
-    this.orderObject.patchValue({ 'orderType': val });
-  }
-
-  get cartItems() {
-    return this.orderObject.get('items').value;
-  }
-
-  get cartLength() {
-    return this.orderObject.get('items').value.length;
-  }
-
-  get isFutureOrder() {
-    return this.orderObject.get('isFutureOrder').value;
-  }
-
-  sortItems() {
-    let itemList = [...this.orderObject.get('items').value]
-    console.log(typeof (itemList));
-    console.log(itemList[0]);
-    let newList = []
-    let qtyList = []
-    for (let i = 0; i < itemList.length; i++) {
-      const e = itemList[i];
-      qtyList.push(e.quantity);
-      let { quantity, ...noQItem } = e;
-      newList.push(noQItem);
-    }
-    console.log('qtyList', qtyList)
-    for (let j = 0; j < newList.length; j++) {
-      const e = newList[j];
-      if (typeof (qtyList[j]) == 'number') {
-        let timeStamp = (Date.now() + j).toString();
-        let temp = {}
-        temp["timeStamp"] = timeStamp
-        temp['qty'] = qtyList[j];
-        temp["item"] = newList[j]
-        qtyList[j] = temp
-        for (let i = j + 1; i < newList.length; i++) {
-          const k = newList[i];
-          if (this.deepEqual(e, k)) {
-            let temp1 = {};
-            temp1["timeStamp"] = timeStamp
-            temp1['qty'] = qtyList[i];
-            temp1["item"] = newList[i]
-            qtyList[i] = temp1;
-          }
+      },
+        {
+          validators: this.validOrderTime.bind(this)
         }
+      );
+    }
+
+  }
+
+
+
+  getEarliestAvailableDateTime() {
+    // TO DO: implement this function
+    if (this.canOrderNow()) {
+
+      let futureOrderTime = dayjs();
+      futureOrderTime.add(1, 'hour')
+      futureOrderTime = this.nearestMinutes(10, futureOrderTime);
+
+
+      return futureOrderTime;
+
+    } else {
+
+      let openTime = this.restaurant.orderStart[dayjs().day()]
+      let closeTime = this.restaurant.orderEnd[dayjs().day()]
+
+      let openDateTime = dayjs(openTime, 'h:mm a')
+      let closeDateTime = dayjs(closeTime, 'h:mm a')
+
+      if (openTime == '') {
+        let futureOrderTIme = dayjs();
+        while (this.closeDays.indexOf(futureOrderTIme.day()) != -1) {
+          futureOrderTIme = futureOrderTIme.add(1, 'day');
+        }
+
+        futureOrderTIme = this.setDayjsTime(futureOrderTIme, this.restaurant.orderStart[futureOrderTIme.day()])
+
+        return futureOrderTIme;
+      }
+
+      console.log('open', openDateTime)
+      console.log('close', closeDateTime)
+
+
+      if (dayjs().isBefore(openDateTime)) {
+
+        let futureOrderTIme = dayjs();
+        futureOrderTIme = this.setDayjsTime(dayjs(), this.restaurant.orderStart[dayjs().day()])
+
+        return futureOrderTIme;
+
+      } else if (dayjs().isAfter(closeDateTime)) {
+
+        let futureOrderTIme = dayjs();
+        while (this.closeDays.indexOf(futureOrderTIme.day()) != -1) {
+          futureOrderTIme = futureOrderTIme.add(1, 'day');
+        }
+
+        futureOrderTIme = this.setDayjsTime(futureOrderTIme, this.restaurant.orderStart[futureOrderTIme.day()])
+
+        return futureOrderTIme;
+
       }
       else {
-        continue;
-      }
-    }
 
 
-    console.log('qtyList after lable', qtyList)
-
-    let itemMap = qtyList.reduce((obj, item) => {
-      console.log('item: ', item)
-      let qty = item.qty;
-      if (!obj[item.timeStamp]) {
-        obj[item.timeStamp] = { "item": item.item, "qty": qty };
-      } else {
-        console.log("obj[item.timeStamp].qty", obj[item.timeStamp].qty)
-        obj[item.timeStamp] = { "item": item.item, "qty": obj[item.timeStamp].qty + qty };
-      }
-      console.log(obj);
-      return obj;
-    }, {})
-    console.log("itemMap values:", Object.values(itemMap));
-    let newItemList = Object.values(itemMap)
-    for (let k = 0; k < newItemList.length; k++) {
-      newItemList[k]['item']["quantity"] = newItemList[k]['qty']
-      newItemList[k] = newItemList[k]['item'];
-    }
-    console.log("newItemList:", newItemList);
-    console.log("groups:", this.groups);
-    let sortedList = []
-    for (let j = 0; j < this.groups.length; j++) {
-      const e = this.groups[j];
-      console.log('e', e)
-      for (let i = 0; i < newItemList.length; i++) {
-        const ele = newItemList[i];
-        console.log('ele', ele)
-        if (e["name"] == ele['group']) {
-          sortedList.push(ele);
-        }
+        console.error('no valid future order time?')
 
       }
+
+
     }
-    console.log("sortedList", sortedList);
-    this.orderObject.patchValue({ 'items': sortedList });
   }
-
-  deepEqual(object1, object2) {
-    const keys1 = Object.keys(object1);
-    const keys2 = Object.keys(object2);
-
-    if (keys1.length !== keys2.length) {
-      return false;
-    }
-
-    for (const key of keys1) {
-      const val1 = object1[key];
-      const val2 = object2[key];
-      const areObjects = this.isObject(val1) && this.isObject(val2);
-      if (
-        areObjects && !this.deepEqual(val1, val2) ||
-        !areObjects && val1 !== val2
-      ) {
-        return false;
-      }
-    }
-
-    return true;
+  get appliedCoupons() {
+    return this.orderObject.get('coupons') as FormArray;
   }
-
-  isObject(object) {
-    return object != null && typeof object === 'object';
-  }
-
-  getPriceOfItem(menuItemFormValue) {
-    //  console.log('menuItemForValue', menuItemFormValue);
-    let startingPrice;
-    // console.log('menuList', this.menuList);
-    if (menuItemFormValue.size) {
-      let bp = this.menuList.find(m => {
-        return m.name == menuItemFormValue.name
-      });
-      // console.log('found ', bp);
-      bp = bp.basePrices.find(t => { return t.type == menuItemFormValue.size });
-
-      // console.log('found ', bp);
-      startingPrice = bp.price;
-    } else {
-      let bp = this.menuList.find(m => {
-        return m.name == menuItemFormValue.name
-      });
-      // console.log('found ', bp);
-      bp = bp.basePrices[0];
-
-      // console.log('found ', bp);
-      startingPrice = bp.price;
-    }
-
-
-    let calculatedPrice = startingPrice;
-
-    let checkList = [
-      'name',
-      'price',
-      'quantity',
-      'size',
-      'instructions'
-    ]
-    // console.log('menuItemForm type: ', typeof (menuItemFormValue))
-
-    for (const key in menuItemFormValue) {
-      if (!checkList.includes(key) && menuItemFormValue[key] != "") {
-        // not inside the checklist
-        // console.log('key: ', key)
-        // console.log('what is inside : ', menuItemFormValue[key])
-        let mod;
-        mod = this.modifiers.find(m => { return m.name == key });
-        // // console.log('mod object: ', mod);
-        if (mod.type == 'increasable_dropdown') {
-          //  console.log('mod: ', mod);
-          // console.log('key: ', key)
-          //console.log('menuItemFormValue: ',menuItemFormValue)
-          let options = []
-          mod.options.forEach(p => {
-
-            for (let index = 0; index < menuItemFormValue[key].length; index++) {
-              let element = menuItemFormValue[key][index];
-              if (p.value == element) {
-                options.push(p)
-              }
-
-            }
-
-          });
-          //  (p => {
-          //   let selectedOptions = [];
-          //   for (let index = 0; index < menuItemFormValue[key].length; index++) {
-          //     let element = menuItemFormValue[key][index];
-          //     if (p.value == element) {
-          //       selectedOptions.push(p)
-          //     }
-
-          //   }
-          //   return selectedOptions
-          // });
-          // console.log('options : ', options);
-          if (options) {
-
-            for (let index = 0; index < options.length; index++) {
-              let option = options[index];
-              if (typeof (option.priceDiff) != 'number') {
-                startingPrice += option.priceDiff[menuItemFormValue.size];
-
-              } else {
-                startingPrice += option.priceDiff;
-              }
-            }
-            // console.log('size price diff', option.priceDiff[menuItemFormValue.size]);
-
-          }
-        }
-        else if (mod.type == 'multi-dropdown') {
-          // console.log('mod in multi-dropdown: ', mod);
-
-          menuItemFormValue[key].forEach(element => {
-            // console.log('selections : ', menuItemFormValue[key])
-            // console.log('selection in the for loop: ', element)
-            let option = mod.options.find(p => { return p.value == element });
-            // console.log('option in the for loop: ', option);
-            // console.log('size price diff', option.priceDiff[menuItemFormValue.size]);
-            if (typeof (option.priceDiff) != 'number') {
-              startingPrice += option.priceDiff[menuItemFormValue.size];
-
-            } else {
-              startingPrice += option.priceDiff;
-            }
-          });
-          // for (const selection in menuItemForm[key]) { ////iterate through the selection array
-
-          if (mod.name == 'Add_Veggie') {
-            startingPrice += 2;
-          }
-          // }
-        }
-        else {
-          let option = mod.options.find(p => { return p.value == menuItemFormValue[key] });
-          if (option) {
-            if (typeof (option.priceDiff) != 'number') {
-              startingPrice += option.priceDiff[menuItemFormValue.size];
-
-            } else {
-              startingPrice += option.priceDiff;
-            }
-          }
-        }
-
-      }
-    }
-
-    calculatedPrice = (startingPrice * menuItemFormValue.quantity);
-
-
-
-    // this._currentItemPrice.next(tempt);
-    // this.finalItemPrice = tempt;
-    return calculatedPrice;
-  }
-
-  addToCart(item: CartItem) {
-    const temp: Array<any> = this.cartItems;
-    temp.push(item);
-    this.orderObject.patchValue({ 'items': temp });
-    this.calculateTotal();
-  }
-
-
-  removeFromCart(item) {
-
-    let temptarrayc = [];
-    temptarrayc = this.cartItems;
-    const index = temptarrayc.indexOf(item);
-    temptarrayc.splice(index, 1);
-    this.orderObject.patchValue({ 'items': temptarrayc });
-    this.calculateTotal()
-  }
-
 
   calculateTotal() {
     let subTotal = 0;
@@ -605,7 +284,7 @@ export class OrderFormService {
     let tip = 0;
     let total = 0;
     let discount = 0;
-    const temp: Array<any> = this.cartItems;
+    const temp: Array<any> = this.orderObject.get('items').value;
 
     for (let i = 0; i < temp.length; i++) {
       subTotal += temp[i].price;
@@ -718,106 +397,142 @@ export class OrderFormService {
     this.checkAvailableCoupons();
   }
 
-  // setInitialItemPrice(price) {
 
-  //   // this._currentItemPrice.next(pxrice);
-  // }
-
-  async validDeliveryAddress(control: AbstractControl) {
-
-    // TO DO: REIMPLIMENT THIS FUNCTION
+  public willCloseSoon(): boolean {
+    // TO DO: implement this function
+    return true;
   }
 
+  public getCloseDays() {
+    let i = 0;
+    console.log('running close days', this.restaurant.orderStart)
 
-  handleMapResponse(response, status) {
-
-    // TO DO: REIMPLIMENT THIS FUNCTION
-
-  }
-
-  async updateUserData(user) {
-
-    // try {
-    //   const userRef = this.afs.doc(`users/${environment.restaurantID}/users/${user.uid}`);
-
-    //   const data = {
-    //     uid: user.uid,
-    //     email: user.email,
-    //     lastLoginAt: new Date(),
-    //     isAnonymous: this.user.isAnonymous,
-    //     provider: this.user.isAnonymous ? 'anonymous' : user.providerData
-    //   };
-    //   await userRef.set(data, { merge: true });
-
-    //   this.afs.doc(`users/${environment.restaurantID}/users/${user.uid}`).get().toPromise().then((val: any) => {
-    //     this.userDocData = val;
-    //     this.orderObject.patchValue({
-    //       'first': val.first,
-    //       'last': val.last,
-    //       'email': val.email,
-    //       'phoneNum': val.phoneNum
-    //     });
-    //   })
-
-    // } catch (error) {
-    //   console.warn('error updating user doc', error)
-    // }
-  }
-
-  subtractHalfHour(timeString) {
-    let hour = parseInt(timeString.split(':')[0]);
-    let minute = parseInt(timeString.split(':')[1].split(' ')[0]);
-    let ampm = timeString.split(':')[1].split(' ')[1];
-    let resultHour;
-    let resultMinute;
-    if (ampm == 'am' && minute < 30) {
-      resultHour = hour - 1;
-      resultMinute = minute + 30;
-    }
-    else if (ampm == 'pm' && minute < 30 && hour != 12) {
-      resultHour = hour + 12 - 1;
-      resultMinute = minute + 30;
-    }
-    else if (ampm == 'pm' && minute < 30 && hour == 12) {
-      resultHour = hour - 1;
-      resultMinute = minute + 30;
-    }
-    else if (ampm == 'pm' && minute >= 30) {
-      resultHour = hour + 12;
-      resultMinute = minute - 30;
-    }
-    return [resultHour, resultMinute]
-  }
-
-  convertTimeToString(date) {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    let hourString;
-    let minuteString;
-    let newHours = hours % 12;
-    newHours = newHours ? newHours : 12;
-    let ampm = hours >= 12 ? 'pm' : 'am';
-    let futureMinutes = (Math.floor(minutes / 10) + 1) * 10
-    if (futureMinutes == 60) {
-      minuteString = '00';
-      hours += 1
-    }
-    else {
-      if (futureMinutes.toString().length < 2) {
-        minuteString = '0' + futureMinutes.toString();
+    this.restaurant.orderStart.forEach(day => {
+      if (this.restaurant.orderStart[i] != '' && this.restaurant.orderEnd[i] != '') {
+        this.orderTimeMap[i] = this.createTimeList(this.restaurant.orderStart[i], this.restaurant.orderEnd[i]);
       }
       else {
-        minuteString = futureMinutes.toString();
+        this.closeDays.push(i);
+      }
+
+      i++;
+    });
+  }
+
+
+  createTimeList(StartTime, EndTime) {
+
+    let x = 10; // minutes interval
+    let times = []; // time array
+    let tt = this.getMinute(StartTime); // start time
+    let endMinute = this.getMinute(EndTime);
+    let ap = ['am', 'pm']; // AM-PM
+
+    // loop to increment the time and push results in array
+    for (let i = 0; tt < endMinute; i++) {
+      let hh = Math.floor(tt / 60); // getting hours of day in 0-24 format
+      let mm = (tt % 60); // getting minutes of the hour in 0-55 format
+      let hourString = (hh % 12) === 0 ? '12' : (hh % 12).toString();
+      times[i] = ("0" + hourString).slice(-2) + ':' + ("0" + mm).slice(-2) + ' ' + ap[Math.floor(hh / 12)];
+      // pushing data in array in [00:00 - 12:00 AM/PM format]
+      tt = tt + x;
+    }
+
+    return times;
+  }
+
+  getMinute(timeString) {
+    let time = timeString;
+    let hours = Number(time.match(/^(\d+)/)[1]);
+    let minutes = Number(time.match(/:(\d+)/)[1]);
+    let AMPM = time.match(/\s(.*)$/)[1];
+    if (AMPM == "pm" && hours < 12) hours = hours + 12;
+    if (AMPM == "am" && hours == 12) hours = hours - 12;
+    let sHours = hours.toString();
+    let sMinutes = minutes.toString();
+    if (hours < 10) sHours = "0" + sHours;
+    if (minutes < 10) sMinutes = "0" + sMinutes;
+    let totalMinutes = hours * 60 + minutes
+    // alert(sHours + ":" + sMinutes + "@" + totalMinutes.toString());
+    return totalMinutes
+  }
+
+  validOrderTime(control: FormGroup) {
+
+    if (control.get('isFutureOrder').value == false) {
+
+      return null
+
+    }
+
+    try {
+
+      if (control.get('isFutureOrder').value) {
+        // need to validate future order date & time
+        const futureDateTime: dayjs.Dayjs = control.get('futureOrderDateTime').value;
+
+        const starterString = futureDateTime.format('YYYY MM DD') + ' ';
+        const orderStart = dayjs(starterString + this.restaurant.orderStart[futureDateTime.day()], 'YYYY MM DD hh:mm a');
+        const orderEnd = dayjs(starterString + this.restaurant.orderEnd[futureDateTime.day()], 'YYYY MM DD hh:mm a');
+
+        if (futureDateTime.isBefore(orderStart)) {
+
+          return { 'invalidOrderTime': 'The future order time is too early.' }
+
+        } else if (futureDateTime.isAfter(orderEnd)) {
+
+          return { 'invalidOrderTime': 'The future order time is too late.' }
+
+        }
+
+      } else {
+        // need to current order date & time
+        const orderDateTime = dayjs();
+
+        const starterString = orderDateTime.format('YYYY MM DD') + ' ';
+        const orderStart = dayjs(starterString + this.restaurant.orderStart[orderDateTime.day()], 'YYYY MM DD hh:mm a');
+        const orderEnd = dayjs(starterString + this.restaurant.orderEnd[orderDateTime.day()], 'YYYY MM DD hh:mm a');
+        if (orderDateTime.isBefore(this.getEarliestOrderTime())) {
+
+          return { 'invalidOrderTime': 'The future order time is too early.' }
+
+        } else if (orderDateTime.isAfter(orderEnd)) {
+
+          return { 'invalidOrderTime': 'The future order time is too late.' }
+
+        }
+
+      }
+    } catch (error) {
+
+    }
+  }
+
+  canOrderNow(): boolean {
+
+    let rightNow = dayjs();
+    let stringStart = rightNow.format('YYYY MM DD') + ' ';
+
+    if (this.closeDays.indexOf(rightNow.day()) != -1) {
+      return false;
+    }
+    else {
+      let endTime = this.restaurant.orderEnd[rightNow.day()]
+      let startTime = this.restaurant.orderStart[rightNow.day()]
+      let endDateTime = dayjs(stringStart + endTime, 'YYYY MM DD hh:mm a')
+      let startDateTime = dayjs(stringStart + startTime, 'YYYY MM DD hh:mm a')
+
+      if (rightNow.isAfter(endDateTime) || rightNow.isBefore(startDateTime)) {
+        return false;
+      } else {
+        return true;
       }
     }
-    let futureHours = (hours + 2) % 12;
-
-    futureHours = futureHours ? futureHours : 12;
-    let futureAmpm = (hours + 1) >= 12 ? 'pm' : 'am';
-    let timeString = ("0" + futureHours.toString()).slice(-2) + ':' + minuteString + ' ' + futureAmpm;
-    return timeString;
 
   }
+
+
+
 
   validLunchItems(control: AbstractControl) {
     // console.log('checking items for lunch item', control);
@@ -845,7 +560,9 @@ export class OrderFormService {
     });
 
     // console.log('has lunch item? ', hasLunchItem);
-    if (hasLunchItem && !this.canOrderLunch) {
+    let orderTime = (this.orderObject.get('isFutureOrder').value ? this.orderObject.get('futureOrderDateTime').value : dayjs())
+    console.log('orderTime', orderTime)
+    if (hasLunchItem && !this.canOrderLunch(orderTime)) {
 
       return { 'lunchItemError': true };
 
@@ -855,37 +572,145 @@ export class OrderFormService {
 
   }
 
-  minSubtotalValidation(couponControl: AbstractControl) {
 
-    let coupon: Coupon = couponControl.value;
-    if (this.orderObject.get('subTotal').value < coupon.minSubtotal) {
-      return { minSubtotal: 'This coupon requires a subtotal of at least $' + coupon.minSubtotal.toFixed(2) };
-    } else {
-      return null;
-    }
-  }
-  orderTypeValidation(couponControl: AbstractControl) {
+  public canOrderLunch(orderDateTime: dayjs.Dayjs): boolean {
 
-    let coupon: Coupon = couponControl.value;
-    if (coupon.orderType != null && this.orderObject.get('orderType').value.toUpperCase() != coupon.orderType.toUpperCase()) {
-      return { orderType: 'The coupon ' + coupon.title + ' must be used with a ' + coupon.orderType + ' order. ' };
-    } else {
-      return null;
-    }
-  }
-  mixableValidation(couponControl: AbstractControl) {
+    let stringStarter = orderDateTime.format('YYYY MM DD') + ' ';
 
-    let coupon: Coupon = couponControl.value;
-    if (!coupon.mixable && this.orderObject.get('coupons').value.length > 1) {
-      return { mixable: 'This coupon is not combinable with other coupons.' };
+    let lunchStart = dayjs(stringStarter + this.restaurant.lunchStart[orderDateTime.day()], 'YYYY MM DD hh:mm a')
+    let lunchCutoff = dayjs(stringStarter + this.restaurant.lunchEnd[orderDateTime.day()], 'YYYY MM DD hh:mm a')
+
+
+    if (orderDateTime.isBefore(lunchStart) || orderDateTime.isAfter(lunchCutoff)) {
+      return false;
     } else {
-      return null;
+      return true;
     }
   }
 
-  get appliedCoupons() {
-    return this.orderObject.get('coupons') as FormArray;
+  getEarliestOrderTime(): dayjs.Dayjs {
+    // is it after order close?
+    console.log('updateEarliestOrderTime')
+    let orderDay: dayjs.Dayjs;
+    let rightNow = dayjs();
+    let stringStart = rightNow.format('YYYY MM DD') + ' ';
+
+    if (this.closeDays.indexOf(rightNow.day()) != -1) {
+      orderDay = dayjs();
+      orderDay.add(1, 'day');
+      while (this.closeDays.indexOf(orderDay.day()) != -1) {
+        orderDay.add(1, 'day');
+      }
+    }
+    else {
+
+      let endTime = this.restaurant.orderEnd[rightNow.day()]
+      let endDateTime = dayjs(stringStart + endTime, 'YYYY MM DD hh:mm a')
+
+      //we need to check the isFutureOrder field to tell if there is future 
+      //order time available today
+      //For future order, if it's less than one hour before the close time, 
+      //then today's date should not be an option 
+
+      if (this.orderObject.get("isFutureOrder").value == false) {
+        if (rightNow.isAfter(endDateTime)) {
+          orderDay = dayjs();
+          orderDay.add(1, 'day');
+          //keep adding until we find the date it's open
+          while (this.closeDays.indexOf(orderDay.day()) != -1) {
+            orderDay.add(1, 'day');
+          }
+        } else {
+          orderDay = dayjs();
+
+        }
+      } else {
+        //For future order, if it's less than one hour before the close time, 
+        //then today's date should not be an option 
+        let temp = rightNow;
+        temp.add(1, "hour")
+        if (temp.isAfter(endDateTime)) {
+          orderDay = dayjs();
+          orderDay.add(1, 'day');
+          //keep adding until we find the date it's open
+          while (this.closeDays.indexOf(orderDay.day()) != -1) {
+            orderDay.add(1, 'day');
+          }
+        } else {
+          orderDay = dayjs();
+
+        }
+      }
+
+    }
+    // earliest future order date time
+    let orderTimes = this.getTimeList(orderDay);
+
+    let starterString = orderDay.format('YYYY MM DD') + ' ';
+    return dayjs(starterString + orderTimes[0], 'YYYY MM DD hh:mm a');
+
   }
+
+  getTimeList(orderDate: dayjs.Dayjs) {
+
+    let t = dayjs();
+    if (orderDate.isSame(t, 'day')) {    // is it today or another day?
+      // same day
+      orderDate = dayjs(); // reset to get correct time
+
+      const today = t.day();
+      const orderEnd_Datetime = dayjs(this.restaurant.orderEnd[today], 'hh:mm a');
+
+      const orderStart = dayjs(this.restaurant.orderStart[today], 'hh:mm a');
+
+      if (orderDate.isBefore(orderStart)) {
+
+        // not a valid order time
+        // console.warn('too early, cannot make asap order')
+        // this.orderObject.patchValue({ 'futureOrderDateTime': this.earliest_OrderDateTime }, { emitEvent: false });
+        // return all times
+        return this.orderTimeMap[orderDate.day()];
+
+      } else if (orderDate.isAfter(orderEnd_Datetime)) {
+        // not a valid order time
+        // console.warn('too late, cannot make asap order')
+
+
+        // set to next day
+        let tomorrow = orderDate.add(1, 'day');
+        let times = this.getTimeList(tomorrow);
+        let starterString = tomorrow.format('YYYY MM DD') + ' ';
+        tomorrow = dayjs(starterString + times[0], 'YYYY MM DD hh:mm a')
+        this.orderObject.patchValue({ 'futureOrderDateTime': tomorrow });
+
+      }
+
+      else {
+        let tempDateTime = dayjs(orderDate).add(1, "hour");
+        // '12:02 pm'
+        const remainder = 10 - (tempDateTime.minute() % 10);
+        // '12:10 pm'
+        let tempTime = dayjs(tempDateTime).add(remainder, "minute").format("hh:mm a");
+        // '12:20 pm'
+        let removeTime_count = this.orderTimeMap[orderDate.day()].indexOf(tempTime); // the index is the number of items to remove from time list
+        let tempList = Array.from(this.orderTimeMap[orderDate.day()]);
+        if (removeTime_count != 0) {
+          tempList.splice(0, removeTime_count);
+        }
+        return tempList;
+
+      }
+
+    }
+    else {
+      // different day - can be any time
+
+      return this.orderTimeMap[orderDate.day()];
+
+    }
+
+  }
+
 
   addCoupon(coupon: Coupon) {
     // console.log(coupon);
@@ -909,11 +734,11 @@ export class OrderFormService {
         errorMessage = 'You have already used this coupon.  ';
         couponAdded = false;
       } else {
-        if (coupon.startDate != null && dayjs(coupon.endDate).isBefore(dayjs(this.current_DateTime))) { // TO DO CHECK IF THIS ISBEFORE IS WORKING CORRECTLY
+        if (coupon.startDate != null && dayjs(coupon.endDate).isBefore(dayjs())) {
           errorMessage = 'Coupon has not started yet. ';
           couponAdded = false;
         }
-        else if (coupon.endDate != null && dayjs(coupon.endDate).isAfter(dayjs(this.current_DateTime))) { // TO DO CHECK IF THIS isAfter IS WORKING CORRECTLY
+        else if (coupon.endDate != null && dayjs(coupon.endDate).isAfter(dayjs())) {
           errorMessage = 'Coupon period is no longer valid. ';
           couponAdded = false;
         }
@@ -990,6 +815,8 @@ export class OrderFormService {
 
   }
 
+
+
   checkAvailableCoupons() {
     if (this.appliedCoupons.length == 0) {
       let temp = [];
@@ -1047,197 +874,464 @@ export class OrderFormService {
   updateCouponSelection(e, coupon: Coupon) {
     this.couponSelections[coupon.couponId] = e.value;
   }
-
-  validOrderTime(control: FormGroup) {
-
-    if (control.get('isFutureOrder').value == false) {
-
-      return null
-
-    }
-
-    try {
-
-      if (control.get('isFutureOrder').value) {
-        // need to validate future order date & time
-        const futureDateTime: dayjs.Dayjs = control.get('futureOrderDateTime').value;
-
-        const starterString = futureDateTime.format('YYYY MM DD') + ' ';
-        const orderStart = dayjs(starterString + this.restaurant.orderStart[futureDateTime.day()], 'YYYY MM DD hh:mm a');
-        const orderEnd = dayjs(starterString + this.restaurant.orderEnd[futureDateTime.day()], 'YYYY MM DD hh:mm a');
-
-        if (futureDateTime.isBefore(orderStart)) {
-
-          return { 'invalidOrderTime': 'The future order time is too early.' }
-
-        } else if (futureDateTime.isAfter(orderEnd)) {
-
-          return { 'invalidOrderTime': 'The future order time is too late.' }
-
-        }
-
-      } else {
-        // need to current order date & time
-        const orderDateTime = dayjs();
-
-        const starterString = orderDateTime.format('YYYY MM DD') + ' ';
-        const orderStart = dayjs(starterString + this.restaurant.orderStart[orderDateTime.day()], 'YYYY MM DD hh:mm a');
-        const orderEnd = dayjs(starterString + this.restaurant.orderEnd[orderDateTime.day()], 'YYYY MM DD hh:mm a');
-        if (orderDateTime.isBefore(this.earliest_OrderDateTime)) {
-
-          return { 'invalidOrderTime': 'The future order time is too early.' }
-
-        } else if (orderDateTime.isAfter(orderEnd)) {
-
-          return { 'invalidOrderTime': 'The future order time is too late.' }
-
-        }
-
-      }
-    } catch (error) {
-
-    }
+  addToCart(item: CartItem) {
+    const temp: Array<any> = this.orderObject.get('items').value;
+    temp.push(item);
+    this.orderObject.patchValue({ 'items': temp });
+    this.calculateTotal();
   }
 
 
-  updateCanOrderLunch(orderDateTime: dayjs.Dayjs) {
+  removeFromCart(item) {
 
-    const timezone: string = this.restaurant.timezone;
-    let stringStarter = orderDateTime.format('YYYY MM DD') + ' ';
+    let temptarrayc = [];
+    temptarrayc = this.orderObject.get('items').value;
+    const index = temptarrayc.indexOf(item);
+    temptarrayc.splice(index, 1);
+    this.orderObject.patchValue({ 'items': temptarrayc });
+    this.calculateTotal()
+  }
 
-    let lunchStart = dayjs(stringStarter + this.restaurant.lunchStart[orderDateTime.day()], 'YYYY MM DD hh:mm a').set('second', 0);
-    let lunchCutoff = dayjs(stringStarter + this.restaurant.lunchEnd[orderDateTime.day()], 'YYYY MM DD hh:mm a')
+  async validDeliveryAddress(control: AbstractControl) {
+    //  console.log('LOOP', control.value);
+    //  console.log('loading true');
+    this.loading = true;
+
+    const origin2 = this.restaurant.address;
+
+    const service = new google.maps.DistanceMatrixService();
+
+    const { response, status } = await new Promise(resolve =>
+      service.getDistanceMatrix({
+        origins: [origin2],
+        destinations: [control.value],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.IMPERIAL,
+      }, (response, status) => {
+
+        resolve({ response, status }
+        )
+      }));
+    let resp;
+    // this.ngZone.run(async() => {
+    resp = await this.handleMapResponse(response, status);
+    this.calculateTotal();
+    // });
+    // console.log('resp', resp);
+    this.ref.tick();
+
+    return resp;
+  }
 
 
-    if (orderDateTime.isBefore(lunchStart) || orderDateTime.isAfter(lunchCutoff)) {
-      this.canOrderLunch = false;
-      // console.log('cannot order lunch')
+  handleMapResponse(response, status) {
+
+    let from;
+    let to;
+    let duration;
+    let distance: string;
+
+    // if true, means not a valid address sent yet
+    if (response.destinationAddresses.includes('')) {
+      // // console.log('not valid addresss yet')
+      // console.log('loading false');
+      this.loading = false;
+      return { validAddress: true };
+
+    }
+    if (status == google.maps.DistanceMatrixStatus.OK) {
+      // console.log('status ok');
+      let origins = response.originAddresses;
+      let destinations = response.destinationAddresses;
+
+      for (let i = 0; i < origins.length; i++) {
+        let results = response.rows[i].elements;
+        for (let j = 0; j < results.length; j++) {
+          let element = results[j];
+          // console.log(element)
+          distance = element.distance.text;
+          duration = element.duration.text;
+          from = origins[i];
+          to = destinations[j];
+        }
+      }
+
+    }
+    else {
+      console.log('not ok, api error', status);
+    }
+
+    let validAddressFound = false;
+
+    this.ref.tick();
+
+    if (distance.includes("ft")) {
+      this.loading = false;
+      validAddressFound = true;
+      this.deliveryFee = 0;
+      return null;
+
+    }
+    else {
+      // greater than 'ft'
+      this.loading = false;
+
+      let miles = parseFloat(distance);
+      this.restaurant.deliveryFees.forEach(fee => {
+        if (miles >= fee.min && miles <= fee.max) {
+          this.deliveryFee = fee.fee;
+          validAddressFound = true;
+          return null;
+        }
+      });
+
+    }
+
+    if (validAddressFound) {
+      this.loading = false;
+      return null;
     } else {
-      this.canOrderLunch = true;
-      // console.log('can order lunch')
+      // no valid address found  
+      this.loading = false;
+      return { validAddress: true };
+    }
 
+
+  }
+
+  minSubtotalValidation(couponControl: AbstractControl) {
+
+    let coupon: Coupon = couponControl.value;
+    if (this.orderObject.get('subTotal').value < coupon.minSubtotal) {
+      return { minSubtotal: 'This coupon requires a subtotal of at least $' + coupon.minSubtotal.toFixed(2) };
+    } else {
+      return null;
+    }
+  }
+
+  orderTypeValidation(couponControl: AbstractControl) {
+
+    let coupon: Coupon = couponControl.value;
+    if (coupon.orderType != null && this.orderObject.get('orderType').value.toUpperCase() != coupon.orderType.toUpperCase()) {
+      return { orderType: 'The coupon ' + coupon.title + ' must be used with a ' + coupon.orderType + ' order. ' };
+    } else {
+      return null;
+    }
+  }
+
+  initfutureOrderDateTime() {
+    if (this.canOrderNow()) {
+      return ''
+
+    } else {
+      return this.getEarliestAvailableDateTime()
     }
   }
 
 
-  updateEarliestOrderTime() {
-    // is it after order close?
-    let orderDay: dayjs.Dayjs;
-    let rightNow = dayjs();
-    let stringStart = rightNow.format('YYYY MM DD') + ' ';
+  initIsFutureOrder() {
+    if (this.canOrderNow()) {
+      return false
 
-    if (this.closeDays.indexOf(rightNow.day()) != -1) {
-      orderDay = dayjs();
-      orderDay.add(1, 'day');
-      while (this.closeDays.indexOf(orderDay.day()) != -1) {
-        orderDay.add(1, 'day');
-      }
+    } else {
+      return true
     }
-    else {
-
-      let endTime = this.restaurant.orderEnd[rightNow.day()]
-      let endDateTime = dayjs(stringStart + endTime, 'YYYY MM DD hh:mm a')
-
-      //we need to check the isFutureOrder field to tell if there is future 
-      //order time available today
-      //For future order, if it's less than one hour before the close time, 
-      //then today's date should not be an option 
-
-      if (this.orderObject.get("isFutureOrder").value == false) {
-        if (rightNow.isAfter(endDateTime)) {
-          orderDay = dayjs();
-          orderDay.add(1, 'day');
-          //keep adding until we find the date it's open
-          while (this.closeDays.indexOf(orderDay.day()) != -1) {
-            orderDay.add(1, 'day');
-          }
-        } else {
-          orderDay = dayjs();
-
-        }
-      } else {
-        //For future order, if it's less than one hour before the close time, 
-        //then today's date should not be an option 
-        let temp = rightNow;
-        temp.add(1, "hour")
-        if (temp.isAfter(endDateTime)) {
-          orderDay = dayjs();
-          orderDay.add(1, 'day');
-          //keep adding until we find the date it's open
-          while (this.closeDays.indexOf(orderDay.day()) != -1) {
-            orderDay.add(1, 'day');
-          }
-        } else {
-          orderDay = dayjs();
-
-        }
-      }
-
-    }
-    // earliest future order date time
-    let times = this.getTimeList(orderDay);
-    let starterString = orderDay.format('YYYY MM DD') + ' ';
-    this.earliest_OrderDateTime = dayjs(starterString + times[0], 'YYYY MM DD hh:mm a')
   }
 
-  getTimeList(orderDate: dayjs.Dayjs) {
-    let t = dayjs();
-    if (orderDate.isSame(t, 'day')) {    // is it today or another day?
-      // same day
-      orderDate = dayjs(); // reset to get correct time
+  mixableValidation(couponControl: AbstractControl) {
 
-      const today = t.day();
-      const timezone = this.restaurant.timezone;
-      const orderEnd_Datetime = dayjs(this.restaurant.orderEnd[today], 'hh:mm a')
+    let coupon: Coupon = couponControl.value;
+    if (!coupon.mixable && this.orderObject.get('coupons').value.length > 1) {
+      return { mixable: 'This coupon is not combinable with other coupons.' };
+    } else {
+      return null;
+    }
+  }
+  getPriceOfItem(menuItemFormValue) {
+    //  console.log('menuItemForValue', menuItemFormValue);
+    let startingPrice;
+    // console.log('menuList', this.menuList);
+    if (menuItemFormValue.size) {
+      let bp = this.menuList.find(m => {
+        return m.name == menuItemFormValue.name
+      });
+      // console.log('found ', bp);
+      bp = bp.basePrices.find(t => { return t.type == menuItemFormValue.size });
 
-      const orderStart = dayjs(this.restaurant.orderStart[today], 'hh:mm a')
+      // console.log('found ', bp);
+      startingPrice = bp.price;
+    } else {
+      let bp = this.menuList.find(m => {
+        return m.name == menuItemFormValue.name
+      });
+      // console.log('found ', bp);
+      bp = bp.basePrices[0];
 
-      if (orderDate.isBefore(orderStart)) {
-
-        // not a valid order time
-        console.warn('too early, cannot make asap order')
-        this.orderObject.patchValue({ 'futureOrderDateTime': this.earliest_OrderDateTime }, { emitEvent: false });
-        // return all times
-        return this.orderTimeMap[orderDate.day()];
-
-      } else if (orderDate.isAfter(orderEnd_Datetime)) {
-        // not a valid order time
-        console.warn('too late, cannot make asap order')
+      // console.log('found ', bp);
+      startingPrice = bp.price;
+    }
 
 
-        // set to next day
-        let tomorrow = orderDate.add(1, 'day');
-        let times = this.getTimeList(tomorrow);
-        let starterString = tomorrow.format('YYYY MM DD') + ' ';
-        tomorrow = dayjs(starterString + times[0], 'YYYY MM DD hh:mm a')
-        this.orderObject.patchValue({ 'futureOrderDateTime': tomorrow });
+    let calculatedPrice = startingPrice;
+
+    let checkList = [
+      'name',
+      'price',
+      'quantity',
+      'size',
+      'group',
+      'instructions'
+    ]
+    // console.log('menuItemForm type: ', typeof (menuItemFormValue))
+
+    for (const key in menuItemFormValue) {
+      if (!checkList.includes(key) && menuItemFormValue[key] != "") {
+        // not inside the checklist
+        // console.log('key: ', key)
+        // console.log('what is inside : ', menuItemFormValue[key])
+        let mod;
+        mod = this.modifiers.find(m => { return m.name == key });
+        // // console.log('mod object: ', mod);
+        if (mod.type == 'increasable_dropdown') {
+          //  console.log('mod: ', mod);
+          // console.log('key: ', key)
+          //console.log('menuItemFormValue: ',menuItemFormValue)
+          let options = []
+          mod.options.forEach(p => {
+
+            for (let index = 0; index < menuItemFormValue[key].length; index++) {
+              let element = menuItemFormValue[key][index];
+              if (p.value == element) {
+                options.push(p)
+              }
+
+            }
+
+          });
+
+          if (options) {
+
+            for (let index = 0; index < options.length; index++) {
+              let option = options[index];
+              if (typeof (option.priceDiff) != 'number') {
+                startingPrice += option.priceDiff[menuItemFormValue.size];
+
+              } else {
+                startingPrice += option.priceDiff;
+              }
+            }
+            // console.log('size price diff', option.priceDiff[menuItemFormValue.size]);
+
+          }
+        }
+        else if (mod.type == 'multi-dropdown') {
+          // console.log('mod in multi-dropdown: ', mod);
+
+          menuItemFormValue[key].forEach(element => {
+            // console.log('selections : ', menuItemFormValue[key])
+            // console.log('selection in the for loop: ', element)
+            let option = mod.options.find(p => { return p.value == element });
+            // console.log('option in the for loop: ', option);
+            // console.log('size price diff', option.priceDiff[menuItemFormValue.size]);
+            if (typeof (option.priceDiff) != 'number') {
+              startingPrice += option.priceDiff[menuItemFormValue.size];
+
+            } else {
+              startingPrice += option.priceDiff;
+            }
+          });
+          // for (const selection in menuItemForm[key]) { ////iterate through the selection array
+
+          if (mod.name == 'Add_Veggie') {
+            startingPrice += 2;
+          }
+          // }
+        }
+        else {
+          let option = mod.options.find(p => { return p.value == menuItemFormValue[key] });
+          if (option) {
+            if (typeof (option.priceDiff) != 'number') {
+              startingPrice += option.priceDiff[menuItemFormValue.size];
+
+            } else {
+              startingPrice += option.priceDiff;
+            }
+          }
+        }
 
       }
+    }
 
+    calculatedPrice = (startingPrice * menuItemFormValue.quantity);
+
+
+
+    // this._currentItemPrice.next(tempt);
+    // this.finalItemPrice = tempt;
+    return calculatedPrice;
+  }
+
+
+
+
+
+  setOrderType(val) {
+    this.orderObject.patchValue({ 'orderType': val });
+  }
+
+  get cartItems() {
+    return this.orderObject.get('items').value;
+  }
+
+  get cartLength() {
+    return this.orderObject.get('items').value?.length || 0;
+  }
+
+  get isFutureOrder() {
+    return this.orderObject.get('isFutureOrder').value;
+  }
+
+  sortItems() {
+    let itemList = [...this.orderObject.get('items').value]
+    console.log(typeof (itemList));
+    console.log("itemList", itemList);
+    let newList = [];
+    let qtyList = [];
+    let priceList = [];
+    for (let i = 0; i < itemList.length; i++) {
+      const e = itemList[i];
+      qtyList.push(e.quantity);
+      priceList.push(e.price);
+      let { quantity, price, ...noQItem } = e;
+      newList.push(noQItem);
+    }
+    console.log('qtyList', qtyList)
+    for (let j = 0; j < newList.length; j++) {
+      const e = newList[j];
+      if (typeof (qtyList[j]) == 'number') {
+        let timeStamp = (Date.now() + j).toString();
+        let temp = {}
+        temp["timeStamp"] = timeStamp
+        temp['qty'] = qtyList[j];
+        temp['price'] = priceList[j];
+        temp["item"] = newList[j];
+
+        qtyList[j] = temp
+        for (let i = j + 1; i < newList.length; i++) {
+          const k = newList[i];
+          if (this.deepEqual(e, k)) {
+            let temp1 = {};
+            temp1["timeStamp"] = timeStamp
+            temp1['qty'] = qtyList[i];
+            temp1['price'] = priceList[i];
+            temp1["item"] = newList[i]
+            qtyList[i] = temp1;
+          }
+        }
+      }
       else {
-        let tempDateTime = dayjs(orderDate).add(1, "hour");
-        // '12:02 pm'
-        const remainder = 10 - (tempDateTime.minute() % 10);
-        // '12:10 pm'
-        let tempTime = dayjs(tempDateTime).add(remainder, "minute").format("hh:mm a");
-        // '12:20 pm'
-        let removeTime_count = this.orderTimeMap[orderDate.day()].indexOf(tempTime); // the index is the number of items to remove from time list
-        let tempList = Array.from(this.orderTimeMap[orderDate.day()]);
-        if (removeTime_count != 0) {
-          tempList.splice(0, removeTime_count);
+        continue;
+      }
+    }
+
+
+    // console.log('qtyList after lable', qtyList)
+
+    let itemMap = qtyList.reduce((obj, item) => {
+      // console.log('item: ',item)
+      let qty = item.qty;
+      let price = item.price;
+      if (!obj[item.timeStamp]) {
+        obj[item.timeStamp] = { "item": item.item, "qty": qty, "price": price };
+      } else {
+        // console.log("obj[item.timeStamp].qty",obj[item.timeStamp].qty)
+        obj[item.timeStamp] = { "item": item.item, "qty": obj[item.timeStamp].qty + qty, "price": obj[item.timeStamp].price + price };
+      }
+      // console.log(obj);
+      return obj;
+    }, {})
+    // console.log("itemMap values:",Object.values(itemMap));
+    let sortedList = []
+    let newItemList = Object.values(itemMap)
+    for (let k = 0; k < newItemList.length; k++) {
+      newItemList[k]['item']["quantity"] = newItemList[k]['qty']
+      newItemList[k]['item']["price"] = newItemList[k]['price']
+      newItemList[k] = newItemList[k]['item'];
+      /////////////put the coupItem into the sorted list first
+      if (newItemList[k]["couponItem"] == true) {
+        sortedList.push(newItemList[k]);
+      }
+    }
+    // console.log("newItemList:",newItemList);
+    // console.log("groups:",this.groups);      
+    ///////////sort items base on their group
+    for (let j = 0; j < this.groups?.length; j++) {
+      const e = this.groups[j];
+      // console.log('e',e)
+      for (let i = 0; i < newItemList.length; i++) {
+        const ele = newItemList[i];
+        // console.log('ele',ele)
+        if (e["name"] == ele['group']) {
+          sortedList.push(ele);
         }
-        return tempList;
 
       }
-
-    }
-    else {
-      // different day - can be any time
-
-      return this.orderTimeMap[orderDate.day()];
-
     }
 
+    // console.log("sortedList",sortedList);
+    this.orderObject.patchValue({ 'items': sortedList });
+  }
+
+  deepEqual(object1, object2) {
+    const keys1 = Object.keys(object1);
+    const keys2 = Object.keys(object2);
+
+    if (keys1.length !== keys2.length) {
+      return false;
+    }
+
+    for (const key of keys1) {
+      const val1 = object1[key];
+      const val2 = object2[key];
+      const areObjects = this.isObject(val1) && this.isObject(val2);
+      if (
+        areObjects && !this.deepEqual(val1, val2) ||
+        !areObjects && val1 !== val2
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  isObject(object) {
+    return object != null && typeof object === 'object';
+  }
+
+  setDayjsTime(someDay: dayjs.Dayjs, timeString: string) {
+    // sets time on a dayjs object 
+    // time string should be like '11:00 am'
+
+    let aday = dayjs(timeString, ['h:mm a', 'h:mm A', 'hh:mma', 'hh:mmA'])
+    aday = aday.set('date', someDay.date())
+
+    return aday;
+  }
+
+  nearestMinutes(interval, someDay: dayjs.Dayjs): dayjs.Dayjs {
+    const roundedMinutes = Math.round(someDay.clone().minute() / interval) * interval;
+    return someDay.clone().minute(roundedMinutes).second(0);
+  }
+
+  nearestPastMinutes(interval, someMoment) {
+    const roundedMinutes = Math.floor(someMoment.minute() / interval) * interval;
+    return someMoment.clone().minute(roundedMinutes).second(0);
+  }
+
+  nearestFutureMinutes(interval, someMoment) {
+    const roundedMinutes = Math.ceil(someMoment.minute() / interval) * interval;
+    return someMoment.clone().minute(roundedMinutes).second(0);
   }
 
 

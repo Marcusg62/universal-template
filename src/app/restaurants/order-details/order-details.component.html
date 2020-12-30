@@ -3,97 +3,92 @@
 </button>
 <h3>Order Details</h3>
 <div>
-<mat-divider></mat-divider>
+  <mat-divider></mat-divider>
 
-<!-- <pre>{{orderForm.orderObject.get('deliveryAddress').value | json}}</pre> -->
-<!-- <pre>Touched?: {{orderForm.orderObject.touched}}</pre> -->
-<mat-dialog-content class="orderDetails">
-  <form [formGroup]="orderForm.orderObject" #addForm="ngForm">
+  <!-- <pre>{{orderForm.orderObject.get('deliveryAddress').value | json}}</pre> -->
+  <!-- <pre>Touched?: {{orderForm.orderObject.touched}}</pre> -->
+  <mat-dialog-content class="orderDetails">
+    <form [formGroup]="orderForm.orderObject" #addForm="ngForm">
 
-    <div class="toggle">
-      <p>Order Type</p>
-      <mat-button-toggle-group #group="matButtonToggleGroup" formControlName="orderType">
-        <mat-button-toggle *ngIf='orderForm.restaurant.takesDelivery' value="Delivery">Delivery</mat-button-toggle>
-        <mat-button-toggle value="Pickup">Pickup</mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
+      <div class="toggle">
+        <p>Order Type</p>
+        <mat-button-toggle-group #group="matButtonToggleGroup" formControlName="orderType">
+          <mat-button-toggle *ngIf='orderForm.restaurant.takesDelivery' value="Delivery">Delivery</mat-button-toggle>
+          <mat-button-toggle value="Pickup">Pickup</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
 
 
-    <mat-form-field class="w-100 p-0 mt-1" appearance="fill"
-      *ngIf="orderForm.orderObject.get('orderType').value == 'Delivery'" color="primary" [style.fontSize.px]="14">
-      <mat-label>Delivery Address</mat-label>
-      <input resizeToFitContent="true" (change)="runcd()" formControlName="deliveryAddress" class="google-place-input"
-        type="text" matInput placeholder="Enter Delivery Address..." google-place>
-      <mat-error *ngIf="orderForm.orderObject.get('deliveryAddress').errors">
-        Deliveries must be within {{getMaxMiles()}} miles.
-      </mat-error>
-    </mat-form-field>
-    <mat-progress-bar mode="indeterminate" *ngIf="orderForm.loading"></mat-progress-bar>
-    <p style="color: green" class="mt-0"
-      *ngIf="orderForm.orderObject.get('deliveryAddress').touched && orderForm.orderObject.get('deliveryAddress').invalid == false && !orderForm.orderObject.get('deliveryAddress').pending && orderForm.orderObject.get('orderType').value == 'Delivery'">
-      Address is in range. ✅</p>
-    <div
-      *ngIf="(afAuth.user | async) && orderForm.orderObject.get('orderType').value == 'Delivery'&& orderForm.userDocData">
-      <!-- <pre>{{ orderForm.userDocData | json }}</pre> -->
-      <p class="upperHint">Or select a saved address</p>
-      <p mat-stroked-button *ngFor="let address of orderForm.userDocData.deliveryAddresses"
-        (click)="updateAddress(address)" class="addressSelection">{{address}}</p>
-    </div>
-    <div *ngIf="!(afAuth.user | async) && orderForm.orderObject.get('orderType').value == 'Delivery'">
-      <!-- <button mat-stroked-button class="text-center m-1" (click)="openLoginDialog()">Login to use a saved address</button> -->
-    </div>
-    <div *ngIf="orderForm.orderObject.get('orderType').value == 'Delivery'" class="w-100">
-      <form [formGroup]="orderForm.orderObject" class="w-50">
-        <mat-form-field class="w-100" appearance="fill" color="primary" [style.fontSize.px]="14">
-          <mat-label>Apt Num</mat-label>
-          <input formControlName="aptNum" type="text" matInput placeholder="Apt No./Unit" class="w-100">
+      <mat-form-field class="deliveryAddress" appearance="fill"
+        *ngIf="orderForm.orderObject.get('orderType').value == 'Delivery'" color="primary" [style.fontSize.px]="14">
+        <mat-label>Delivery Address</mat-label>
+        <input resizeToFitContent="true" (change)="runcd()" formControlName="deliveryAddress" class="google-place-input"
+          type="text" matInput placeholder="Enter Delivery Address..." google-place>
+        <mat-error *ngIf="orderForm.orderObject.get('deliveryAddress').errors">
+          Deliveries must be within {{getMaxMiles()}} miles.
+        </mat-error>
+      </mat-form-field>
+      <mat-progress-bar mode="indeterminate" *ngIf="orderForm.loading"></mat-progress-bar>
+      <p style="color: green" class="m-0"
+        *ngIf="orderForm.orderObject.get('deliveryAddress').touched && orderForm.orderObject.get('deliveryAddress').invalid == false && !orderForm.orderObject.get('deliveryAddress').pending && orderForm.orderObject.get('orderType').value == 'Delivery'">
+        Address is in range. ✅</p>
+
+      <div *ngIf="orderForm.orderObject.get('orderType').value == 'Delivery'" class="w-100">
+        <form [formGroup]="orderForm.orderObject" class="w-50">
+          <mat-form-field class="w-100" appearance="fill" color="primary" [style.fontSize.px]="14">
+            <mat-label>Apt Num</mat-label>
+            <input formControlName="aptNum" type="text" matInput placeholder="Apt No./Unit" class="w-100">
+          </mat-form-field>
+        </form>
+      </div>
+
+      <div class="text-center m-b-16">
+        <p class="txt-light ">When do you want your food?</p>
+        <mat-button-toggle-group #group="matButtonToggleGroup" formControlName="isFutureOrder">
+          <mat-button-toggle *ngIf="orderForm.canOrderNow() == true" [value]="false">Now</mat-button-toggle>
+          <mat-button-toggle [value]="true">Later</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="header warning" *ngIf="!orderForm.canOrderNow()">
+        <p class="m-0">We are Closed Right Now.</p>
+        <p class="m-0">Next available Order Time is {{orderForm.getEarliestAvailableDateTime().format("LLLL")}}</p>
+      </div>
+      <div *ngIf="orderForm.orderObject.get('isFutureOrder').value == true" class=" m-t-16">
+        <mat-form-field class="w-50-left">
+          <mat-datepicker-toggle matSuffix [for]="picker" class="clock"></mat-datepicker-toggle>
+          <mat-label>Order Date</mat-label>
+          <input matInput [min]="orderForm.earliest_OrderDateTime" [max]="maxDate" [matDatepicker]="picker"
+            [matDatepickerFilter]="dateFilter" class="w-75" readonly (click)="picker.open()"
+            formControlName="futureOrderDateTime" (dateChange)="dayChanged($event)">
+          <mat-error>Required</mat-error>
         </mat-form-field>
-      </form>
-    </div>
+        <mat-datepicker touchUi #picker></mat-datepicker>
 
-    <div class="text-center m-b-16">
-      <p class="txt-light ">When do you want your food?</p>
-      <mat-button-toggle-group #group="matButtonToggleGroup" formControlName="isFutureOrder">
-        <mat-button-toggle *ngIf="orderForm.canOrderNow == true" [value]="false">Now</mat-button-toggle>
-        <mat-button-toggle [value]="true">Later</mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
+        <mat-form-field class="w-50-right">
+          <mat-label>Order Time</mat-label>
+          <mat-select (selectionChange)="timeChange($event)">
+            <mat-option
+              *ngFor="let time of orderForm.getTimeList(orderForm.orderObject.get('futureOrderDateTime').value)"
+              [value]="time">{{time}}</mat-option>
+          </mat-select>
+          <mat-error>Required</mat-error>
+        </mat-form-field>
 
-    <div class="header warning m-b-16 m-t-16" *ngIf="!orderForm.canOrderNow">
-      <p class="txt-bold">We are Closed Right Now</p>
-      <p class="txt-bold">Next available Order Time is {{orderForm.earliest_OrderDateTime.format("LLLL")}}</p>
-    </div>
-    <div *ngIf="orderForm.orderObject.get('isFutureOrder').value == true" class=" m-t-16">
-
-      <mat-form-field class="w-50-left">
-        <mat-datepicker-toggle matSuffix [for]="picker" class="clock"></mat-datepicker-toggle>
-        <mat-label>Order Date</mat-label>
-        <input matInput [min]="orderForm.earliest_OrderDateTime" [max]="maxDate" [matDatepicker]="picker"
-          [matDatepickerFilter]="dateFilter" class="w-75" readonly (click)="picker.open()"
-          formControlName="futureOrderDateTime" (dateChange)="dayChanged($event)">
-        <mat-error>Required</mat-error>
-      </mat-form-field>
-      <mat-datepicker touchUi #picker></mat-datepicker>
-
-      <mat-form-field class="w-50-right">
-        <mat-label>Order Time</mat-label>
-        <mat-select formControlName="futureOrderTime">
-          <mat-option *ngFor="let time of orderForm.orderTimes" [value]="time">{{time}}</mat-option>
-        </mat-select>
-        <mat-error>Required</mat-error>
-      </mat-form-field>
-
-    </div>
-  </form>
-  <p class="w-full txt-center  b-t-8" *ngIf="orderForm.orderObject.get('isFutureOrder').value == true">Scheduled
-    Time: {{orderForm.orderObject.get('futureOrderDateTime').value.format('LLLL')}}</p>
-  <p class="text-danger"
-    *ngIf="orderForm.orderObject.get('isFutureOrder').value == true && orderForm.orderObject.errors">
-    Please select a valid order time.
-  </p>
-</mat-dialog-content>
-<mat-dialog-actions>
-  <button (click)="checkValidDetails()" mat-flat-button color="primary" class="centerButton w-100">Continue</button>
-</mat-dialog-actions>
+      </div>
+    </form>
+    <p class="w-full txt-center  b-t-8" *ngIf="orderForm.orderObject.get('isFutureOrder').value == true">Scheduled
+      Time: {{orderForm.orderObject.get('futureOrderDateTime').value.format('LLLL')}}</p>
+      <p class="warning m-0"
+      *ngIf="orderForm.orderObject.get('isFutureOrder').value && orderForm.orderObject.get('futureOrderDateTime').value.format('h:mm a') == orderForm.restaurant.orderStart[orderForm.orderObject.get('futureOrderDateTime').value.day()]">
+      Note: Orders placed at opening time may not be ready upon opening.</p>
+    <p class="text-danger"
+      *ngIf="orderForm.orderObject.get('isFutureOrder').value == true && orderForm.orderObject.errors">
+      Please select a valid order time.
+    </p>
+  </mat-dialog-content>
+  <mat-dialog-actions>
+    <button (click)="checkValidDetails()" mat-flat-button color="primary" class="centerButton w-100">Continue</button>
+  </mat-dialog-actions>
 
 </div>

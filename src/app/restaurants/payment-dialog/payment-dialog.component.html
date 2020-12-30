@@ -1,0 +1,31 @@
+<button class="close pointer" mat-icon-button disabled aria-label="Button to close checkout dialog."
+  mat-dialog-close>
+  <mat-icon mat-dialog-close class="pointer">close</mat-icon>
+</button>
+<div>
+  <h3 class="text-center mt-2 mb-1" >Make Payment</h3>
+
+  <form [formGroup]="" (submit)="handleForm($event)" class="checkout">
+    <div class="total">
+      <p class="m-0">Total: </p>
+      <p class="m-0">{{orderForm.orderObject.get('total').value | currency}}</p>
+    </div>
+    <p class="upperHint text-center">Pay with a credit card</p>
+
+    <div #cardElement>
+      <!-- A Stripe Element will be inserted here. -->
+    </div>
+
+
+    <!-- Used to display Element errors. -->
+    <p class="warning">{{ cardErrors }}</p>
+
+
+    <button class="w-100 m-t-16" color="primary" [disabled]="loading" mat-raised-button>Place Order for {{ orderForm.orderObject.get('total').value | currency}}</button>
+    <mat-spinner class="spinner" *ngIf="this.loading"></mat-spinner>
+    <p class="upperHint" *ngIf="this.loading">Processing Order...</p>
+    <!-- <p class="upperHint text-center" *ngIf="canUseWallet">Or pay with a digital wallet</p>
+    <div #payElement>
+    </div> -->
+  </form>
+</div>

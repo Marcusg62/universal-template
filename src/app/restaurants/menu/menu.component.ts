@@ -9,6 +9,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Restaurant } from '../Interfaces.model';
 import { OrderDetailsComponent } from '../order-details/order-details.component';
 import { Observable } from 'rxjs';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-menu',
@@ -28,13 +29,46 @@ export class MenuComponent implements OnInit {
   isFirst;
   expanded = false;
 
+  menuItems$: Observable<any>;
+  modifiers$: Observable<any>
 
-  constructor(public orderForm: OrderFormService, private route: ActivatedRoute, public dialog: MatDialog) {
 
-    // this.modifiers = this.route.snapshot.data["modifiers"];
+  constructor(public afs: AngularFirestore, public orderForm: OrderFormService, private route: ActivatedRoute, public dialog: MatDialog) {
+
     // this.groups = this.route.snapshot.data["groups"].GroupDetail;
-    // this.menuItems = this.route.snapshot.data["menuItems"];
-    // console.log('menuitems', this.menuItems)
+
+    this.groups = this.afs.doc('public/groups/' + route.snapshot.url[1].path + '/Groups').valueChanges()
+    this.menuItems = []
+    this.menuItems$ = this.afs.collection('public/menu/' + route.snapshot.url[1].path).get().pipe(take(1))
+
+    this.modifiers$ = this.afs.collection('public/modifiers/' + route.snapshot.url[1].path).get().pipe(take(1))
+    this.menuItems$.subscribe(val => {
+      val.docs.forEach(doc => {
+
+        this.menuItems.push(doc.data())
+
+      })
+      this.orderForm.menuList = this.menuItems
+
+    })
+
+    this.modifiers$.subscribe(val => {
+      val.docs.forEach(doc => {
+
+        this.orderForm.modifiers.push(doc.data())
+
+      })
+    })
+
+    this.groups.subscribe(val => {
+      console.log('groups', val)
+      this.orderForm.groups = val.GroupDetail
+    })
+
+  }
+
+  public returnGroupArray(group) {
+    return this.menuItems.filter(menuItem => menuItem.group == group);
   }
 
   onSectionChange(sectionId: string) {

@@ -22,9 +22,7 @@ export class AddToCartComponent implements OnInit {
 
   constructor(analytics: AngularFireAnalytics, private fb: FormBuilder, public dialogRef: MatDialogRef<AddToCartComponent>, @Inject(MAT_DIALOG_DATA) public data, public orderForm: OrderFormService) {
 
-    analytics.logEvent('add_item_to_card', {item: data.menuItem.name});
-    console.log('constructing new menuItemForm', this.data.menuItem);
-    console.log("can order lunch",this.orderForm.canOrderLunch)
+    analytics.logEvent('add_item_to_cart', {item: data.menuItem.name});
 
     // this.showPrice = this.orderForm.currentItemPrice;
     this.menuItemForm = this.fb.group({

@@ -1,8 +1,11 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { OrderFormService } from '../order-form.service';
 import { MatDialog } from '@angular/material/dialog';
 import { AddToCartComponent } from '../add-to-cart/add-to-cart.component';
+import { AngularFirestore, docChanges } from '@angular/fire/firestore';
+import { take } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 // import { AddToOrderDialogComponent } from '../add-to-order-dialog/add-to-order-dialog.component';
 
 
@@ -12,22 +15,23 @@ import { AddToCartComponent } from '../add-to-cart/add-to-cart.component';
   styleUrls: ['./menu-group.component.scss']
 })
 export class MenuGroupComponent implements OnInit {
-  @Input() group: any;
+
   @Input() modifiers: any;
   @Input() menuItems: any;
+  @Input() group: any;
 
-  constructor(public dialog: MatDialog, public router: Router) {
+  menuItems$:Observable<any>;
 
-    // console.log(router.url)
+  constructor(private route: ActivatedRoute, public afs: AngularFirestore, public dialog: MatDialog, public router: Router) {
 
+
+    
   }
 
   ngOnInit(): void {
   }
 
-  returnGroupArray(group) {
-    return this.menuItems.filter(menuItem => menuItem.group == group);
-  }
+
 
 
   openItem(menuItem) {

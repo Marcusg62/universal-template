@@ -1,0 +1,86 @@
+.w-50-left {
+  margin: auto;
+  min-width: 225px;
+}
+.w-50-right {
+  margin: auto;
+}
+
+.checkout-card {
+  width: 100%;
+  display: block;
+  margin: auto;
+  max-width: 700px;
+  margin: 1rem auto;
+  // text-align: center;
+}
+.header {
+  width: 100%;
+  text-align: center;
+}
+.aptNum {
+  max-width: 100px;
+}
+
+.orderInstructions {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.removeButton {
+  min-width: 80px;
+  align-content: flex-start;
+  text-align: right;
+  display: inline-block;
+  margin: 0.5rem;
+  vertical-align: top;
+  align-items: flex-start;
+}
+.total {
+  display: inline-grid;
+  text-align: right;
+  grid-template-columns: 8rem 4rem;
+  grid-template-rows: auto;
+  margin: auto;
+  width: min-content;
+}
+
+.total > p {
+  margin: 0;
+}
+
+.upperHint {
+  padding-top: 0px;
+}
+
+.userInfo > mat-form-field {
+  padding: 0.5rem;
+}
+
+.edit {
+  text-decoration: underline;
+  font-weight: lighter;
+  font-size: 1rem;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.activeRoute {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.modifiers {
+  display: inline-block;
+}
+
+.font-weight-bold {
+  font-weight: 700 !important;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+.cartItem {
+  margin: 2rem 0;
+}

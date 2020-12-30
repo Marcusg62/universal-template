@@ -38,11 +38,14 @@
 
     </div>
 
-    <div class="header warning" *ngIf="!orderForm.canOrderNow">
+    <div class="header warning" *ngIf="!orderForm.canOrderNow()">
       <p class="txt-bold">We are Closed Right Now</p>
       <p class="txt-bold">Next available Order Time is... </p>
     </div>
   </mat-card>
 
-  <app-menu-group *ngFor="let group of groups" [group]="group" [menuItems]="menuItems"></app-menu-group>
+  <div *ngIf="(groups | async) as g">
+    <app-menu-group *ngFor="let group of g.GroupDetail" [group]="group" [menuItems]="returnGroupArray(group.name)"></app-menu-group>
+
+  </div>
 </div>
