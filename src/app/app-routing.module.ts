@@ -13,6 +13,8 @@ import { OrderStatusComponent } from './restaurants/order-status/order-status.co
 
 const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'restaurant', redirectTo: '' },
+
   {
 
     path: 'restaurant/:restaurant', //:restaurant is dynamic here
@@ -27,6 +29,7 @@ const routes: Routes = [
   },
   { path: 'restaurant/:restaurant/checkout', component: CheckoutComponent },
   { path: 'account', component: AccountComponent },
+  { path: 'account/orderstatus', redirectTo: 'account' },
   { path: 'account/orderstatus/:orderId', component: OrderStatusComponent }
 
 

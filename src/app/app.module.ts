@@ -53,6 +53,7 @@ import { LoginComponent } from './login/login.component';
 import { PaymentDialogComponent } from './restaurants/payment-dialog/payment-dialog.component';
 import { OrderStatusComponent } from './restaurants/order-status/order-status.component';
 import { AccountComponent } from './account/account.component';
+import { FooterComponent } from './footer/footer.component';
 
 @NgModule({
   declarations: [
@@ -70,6 +71,7 @@ import { AccountComponent } from './account/account.component';
     PaymentDialogComponent,
     OrderStatusComponent,
     AccountComponent,
+    FooterComponent,
 
   ],
   imports: [
