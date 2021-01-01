@@ -4,9 +4,7 @@
             <div *ngIf="(order | async) as o">
 
                 <mat-card class="receipt">
-
-
-                    <p style="color: red;" *ngIf="o.canceled">ORDER CANCELED</p>
+                    <p style="color: red;" *ngIf="o.canceled">Order was cancelled/refunded. </p>
 
                     <div class="w-100 dis-flex flex-sa  m-t-8 p-b-10">
                         <h3>Order Id: {{o.restaurantID}}-{{o.id}}</h3>
@@ -14,6 +12,8 @@
                         <p>{{o.phoneNum}}</p>
                         <p>{{o.orderType}}</p>
                         <p *ngIf="o.orderType == 'Delivery'"> {{o.deliveryAddress}} <br /> {{o.aptNum}}</p>
+                        <p *ngIf="o.confirmed">Order was confirmed by restaurant. </p>
+                        <p *ngIf="!o.confirmed">Order has not been confirmed by restaurant. </p>
                     </div>
                     <div *ngIf="o.isFutureOrder" class="futureOrder">
                         <h6 style="margin: 0; font-style: normal;">Scheduled: {{o.futureOrderDate | date:"EEEE, MMM

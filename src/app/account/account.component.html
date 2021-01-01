@@ -1,9 +1,10 @@
 <mat-card>
     <mat-card-content>
-        <main *ngIf="orderForm.userDocData">
+        <main *ngIf="(afAuth.user | async) as user else login">
 
             <h1>Your Inhouse Orders Account</h1>
-            <h2>myemail@example.com</h2>
+            <h2 *ngIf="user.isAnonymous">Guest Account</h2>
+            <h2 *ngIf="user.email">{{user.email}}</h2>
             <button mat-stroked-button color="warn" (click)="signout()">Sign Out</button>
             <div>
                 <h3>Order History</h3>
@@ -16,11 +17,10 @@
                 </ul>
             </div>
 
-            <h3>Have a question? <a href="#">Contact Support</a> </h3>
-
-
 
         </main>
-
+        <ng-template #login>
+            <app-login></app-login>
+        </ng-template>
     </mat-card-content>
 </mat-card>
