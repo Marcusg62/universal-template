@@ -184,16 +184,15 @@
             You have lunch items in your cart. Please remove the items or change the order time. </p>
         </div>
         <!-- TO DO: SET DYNAMIC LUNCH TIME -->
-        <div>
-          <h3 class="text-center">Checkout</h3>
+        <h3 class="text-center">Checkout</h3>
 
-          <div *ngIf="!(afAuth.user | async) else loggedIn">
-            <p class="text-center mt-2 mb-2">Sign in to save contact info for next time or select "Guest Checkout."
-            </p>
-            <app-login></app-login>
-          </div>
+        <div *ngIf="!(afAuth.user | async) else loggedIn">
+          <p class="text-center mt-2 mb-2">Sign in to save contact info for next time or select "Guest Checkout."
+          </p>
+          <app-login></app-login>
         </div>
         <ng-template #loggedIn>
+          <pre>{{(afAuth.user | async) | json}}</pre>
           <form (ngSubmit)="openPaymentDialog($event)" [formGroup]="orderForm.orderObject" #addForm="ngForm">
             <p class="upperHint">Contact Info. We will contact you if there are any issues. </p>
             <div class="userInfo">
@@ -214,7 +213,8 @@
               </mat-form-field>
               <mat-form-field class="w-100" appearance="fill" required="true">
                 <mat-label>Phone Number</mat-label>
-                <input autocomplete="tel-national" formControlName="phoneNum" type="tel" matInput placeholder="Phone Number">
+                <input autocomplete="tel-national" formControlName="phoneNum" type="tel" matInput
+                  placeholder="Phone Number">
                 <mat-error>Required</mat-error>
               </mat-form-field>
             </div>

@@ -1,0 +1,106 @@
+.instructions {
+  padding: 4px 8px;
+  margin: 8px 0;
+  border-radius: 8px;
+  background-color: rgb(255, 228, 161);
+  max-width: 300px;
+  width: 100%;
+  font-size: 16px;
+  font-style: italic;
+}
+.futureOrder {
+  color: #e07f11;
+  padding-bottom: 0.5rem;
+}
+
+.detailContainer {
+  width: 100%;
+  height: auto;
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.receipt {
+  display: flex;
+  flex-wrap: wrap;
+  text-align: left !important;
+  justify-content: space-between;
+  border-radius: 8px;
+  border: 1px solid rgb(203, 203, 203);
+  padding: 16px;
+  margin: 1rem 0;
+  width: 58%;
+}
+
+.customerInfo {
+  width: 42%;
+  display: flex;
+  min-width: 200px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding-right: 1rem;
+}
+
+.lineItems {
+  border-top: 0.5px solid rgb(171, 171, 171);
+  padding-left: 1rem;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.lineItems > p {
+  margin: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+
+p,
+span,
+div {
+  font-size: 1.2rem;
+}
+
+.bigIcon {
+  font-size: 48px;
+  width: 100% !important;
+  margin: auto !important;
+  text-align: center;
+}
+
+.actionButton {
+  width: 100% !important;
+  background-color: #10ac84;
+}
+
+.qty {
+  margin: 3px;
+  font-weight: bolder;
+}
+.orderItem {
+  font-weight: bolder;
+}
+
+.orderItem,
+.itemPrice {
+  margin: 2px 0 4px;
+}
+
+.itemPrice {
+  text-align: right;
+}
+
+.modifiers {
+  margin-left: 1rem;
+}
+
+@media only screen and (max-width: 580px) {
+  .customerInfo,
+  .receipt {
+    width: 100%;
+  }
+}

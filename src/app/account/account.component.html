@@ -1,21 +1,26 @@
 <mat-card>
     <mat-card-content>
+        <main *ngIf="orderForm.userDocData">
 
-        <h1>Your Inhouse Orders Account</h1>
-        <h2>myemail@example.com</h2>
-        <button mat-stroked-button color="warn">Sign Out</button>
-        <div>
-            <h3>Order History</h3>
-            <p>#1234</p>
-            <p>#1235</p>
-            <p>#1258</p>
-        </div>
+            <h1>Your Inhouse Orders Account</h1>
+            <h2>myemail@example.com</h2>
+            <button mat-stroked-button color="warn" (click)="signout()">Sign Out</button>
+            <div>
+                <h3>Order History</h3>
+                <ul>
+                    <li *ngFor="let order of orderForm.userDocData.orders">
+                        <a [routerLink]="['orderstatus', order]" routerLinkActive="router-link-active">
+                            {{order}}
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
-        <h3>Have a question? <a href="#">Contact Support</a> </h3>
+            <h3>Have a question? <a href="#">Contact Support</a> </h3>
 
 
 
-
+        </main>
 
     </mat-card-content>
 </mat-card>

@@ -11,6 +11,7 @@ import * as  customParseFormat from 'dayjs/plugin/customParseFormat'
 import { BehaviorSubject, Subject } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { timestamp } from 'rxjs/operators';
+import { AngularFirestore } from '@angular/fire/firestore';
 
 dayjs.extend(timezone)
 dayjs.extend(customParseFormat)
@@ -37,15 +38,27 @@ export class OrderFormService {
   public loading = false;
   public modifiers = [];
   public groups;
+  public user;
+  public userDocData;
 
-
-  constructor(private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private fb: FormBuilder) {
+  constructor(public afs: AngularFirestore, private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private fb: FormBuilder) {
 
     this.restaurant$.subscribe(val => {
       this.restaurant = val;
       this.initializeOrderObject()
       console.log('val', this.restaurant)
     })
+
+    this.afAuth.user.subscribe(async (val) => {
+      // console.log('user change', val);
+      this.user = val;
+      if (val != null) {
+        // console.log('user change', JSON.parse(JSON.stringify(val)));
+        let tempVal = JSON.parse(JSON.stringify(val));
+        this.updateUserData(tempVal);
+
+      }
+    });
 
 
   } // end constructor 
@@ -67,7 +80,7 @@ export class OrderFormService {
         isFutureOrder: this.initIsFutureOrder(),
         futureOrderDateTime: [this.initfutureOrderDateTime(),],
         items: [[], [this.validLunchItems.bind(this), Validators.required]],
-        deliveryAddress: ['', {updateOn: 'blur'}],
+        deliveryAddress: ['', { updateOn: 'blur' }],
         aptNum: ['',],
         phoneNum: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(10)]],
         first: ['', [Validators.required]],
@@ -1332,6 +1345,33 @@ export class OrderFormService {
   nearestFutureMinutes(interval, someMoment) {
     const roundedMinutes = Math.ceil(someMoment.minute() / interval) * interval;
     return someMoment.clone().minute(roundedMinutes).second(0);
+  }
+
+  async updateUserData(user) {
+    // console.log('lastLoginAt', user.lastLoginAt);
+    // console.log('createdAt', user.createdAt);
+    const userRef = this.afs.doc(`users/${user.uid}`);
+    // console.log('last logged in at', this.user.lastLoginAt);
+    // console.log('created', this.user.createdAt);
+    const data = {
+      uid: user.uid,
+      email: user.email,
+      lastSeen: new Date(),
+      isAnonymous: this.user.isAnonymous,
+      provider: this.user.isAnonymous ? 'anonymous' : user.providerData
+    };
+    await userRef.set(data, { merge: true });
+
+    this.afs.doc(`users/${user.uid}`).valueChanges().subscribe((val: any) => {
+      this.userDocData = val;
+      this.orderObject.patchValue({
+        'first': val.first,
+        'last': val.last,
+        'email': val.email,
+        'phoneNum': val.phoneNum
+      });
+    });
+
   }
 
 
