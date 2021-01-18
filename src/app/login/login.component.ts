@@ -15,6 +15,12 @@ export class LoginComponent implements OnInit {
   constructor(public afAuth: AngularFireAuth, private afs: AngularFirestore, public orderForm: OrderFormService) { }
 
   ngOnInit() {
+
+    this.afAuth.user.subscribe(user => {
+      if (user) {
+        this.orderForm.updateUserData(user)
+      }
+    })
   }
 
 

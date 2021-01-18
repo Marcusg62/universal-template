@@ -12,6 +12,7 @@ import { environment } from '../environments/environment';
 import { AngularFireModule } from '@angular/fire';
 import { AngularFirestoreModule } from '@angular/fire/firestore';
 
+import { HttpClientModule } from '@angular/common/http';
 
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NavComponent } from './nav/nav.component';
@@ -54,6 +55,7 @@ import { PaymentDialogComponent } from './restaurants/payment-dialog/payment-dia
 import { OrderStatusComponent } from './restaurants/order-status/order-status.component';
 import { AccountComponent } from './account/account.component';
 import { FooterComponent } from './footer/footer.component';
+import { PropayComponent } from './payments/propay/propay.component';
 
 @NgModule({
   declarations: [
@@ -72,6 +74,7 @@ import { FooterComponent } from './footer/footer.component';
     OrderStatusComponent,
     AccountComponent,
     FooterComponent,
+    PropayComponent,
 
   ],
   imports: [
@@ -79,7 +82,7 @@ import { FooterComponent } from './footer/footer.component';
     AngularFireModule.initializeApp(environment.firebaseConfig),
     ReactiveFormsModule,
     BrowserTransferStateModule,
-
+    HttpClientModule,
 
     AppRoutingModule,
     BrowserAnimationsModule,

@@ -11,8 +11,11 @@ import { OrderFormService } from '../restaurants/order-form.service';
 export class AccountComponent implements OnInit {
 
   constructor(public orderForm: OrderFormService, public afAuth: AngularFireAuth) { }
-
+  public userDoc: any; 
   ngOnInit(): void {
+
+
+    console.log('user', this.orderForm.userDocData)
   }
 
   async signout() {

@@ -24,8 +24,6 @@
     <button class="w-100 m-t-16" color="primary" [disabled]="loading" mat-raised-button>Place Order for {{ orderForm.orderObject.get('total').value | currency}}</button>
     <mat-spinner class="spinner" *ngIf="this.loading"></mat-spinner>
     <p class="upperHint" *ngIf="this.loading">Processing Order...</p>
-    <!-- <p class="upperHint text-center" *ngIf="canUseWallet">Or pay with a digital wallet</p>
-    <div #payElement>
-    </div> -->
+
   </form>
 </div>

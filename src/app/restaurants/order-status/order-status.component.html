@@ -1,7 +1,162 @@
 <mat-card>
     <mat-card-content>
-        <main *ngIf="orderForm.userDocData">
+        <main *ngIf="(afAuth.user | async)">
             <div *ngIf="(order | async) as o">
+
+                <mat-card class="receipt">
+                    <p style="color: red;" *ngIf="o.canceled">Order was cancelled/refunded. </p>
+
+                    <div class="w-100 dis-flex flex-sa  m-t-8 p-b-10">
+                        <h3>Order Id: {{o.restaurantID}}-{{o.id}}</h3>
+                        <p>{{o.first | titlecase}} {{o.last[0] | titlecase}}.</p>
+                        <p>{{o.phoneNum}}</p>
+                        <p>{{o.orderType}}</p>
+                        <p *ngIf="o.orderType == 'Delivery'"> {{o.deliveryAddress}} <br /> {{o.aptNum}}</p>
+                        <p *ngIf="o.confirmed">Order was confirmed by restaurant. </p>
+                        <p *ngIf="!o.confirmed">Order has not been confirmed by restaurant. </p>
+                    </div>
+                    <div *ngIf="o.isFutureOrder" class="futureOrder">
+                        <h6 style="margin: 0; font-style: normal;">Scheduled: {{o.futureOrderDate | date:"EEEE, MMM
+                            dd"}},
+                            {{o.futureOrderTime }}</h6>
+                    </div>
+                    <div *ngIf="o.orderType == 'Delivery'" class="w-100 txt-left  p-b-10">
+                        <h6 style="margin: 0; padding-bottom: .2rem; font-style: normal;">{{o.deliveryAddress}}</h6>
+                        <h6 style="margin: 0; padding-bottom: .2rem; font-style: normal;">Apt/Unit: {{o.aptNum}}</h6>
+                    </div>
+                    <p *ngIf="o.confirmed && !o.canceled">✅ Comfirmed</p>
+
+
+                    <div *ngIf="o.orderInstructions" class="instructions">
+                        <p style="margin: 0; font-style: normal; font-size: 12px;">Order Instructions</p>
+                        {{o.orderInstructions}}
+                    </div>
+                    <div *ngFor="let item of o.items" class="w-100 dis-flex flex-w flex-sb">
+
+                        <p class="w-100">
+                            <span class="qty" style="width: 10%;">{{item.quantity}}x </span>
+                            <span class="orderItem" style="width: 90%;">{{item.name}}</span>
+                        </p>
+
+
+
+
+                        <!-- Start Modifiers -->
+                        <div class="modifiers">
+                            <!-- HARD CODED Modifiers -->
+                            <p *ngIf="item.size && item.size!='Regular'&& item.size!='Price'" class="w-100">
+                                {{item.size}}
+                            </p>
+                            <p *ngIf="item.couponItem" class="w-100">Coupon Item</p>
+                            <!-- Dynamic Modifiers -->
+                            <div *ngFor="let mod of modifiers" class="w-100">
+                                <div *ngIf="item[mod.name]">
+
+                                    <div [ngSwitch]="mod.type">
+
+                                        <!-- dropdown -->
+                                        <p *ngSwitchCase="'dropdown'">{{ mod.displayName }}: {{item[mod.name]}}</p>
+
+                                        <!-- multi-dropdown -->
+                                        <div *ngSwitchCase="'multi-dropdown'">
+                                            <p>Add:
+                                                <span *ngFor="let c of item[mod.name]">
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)!=item[mod.name].length-1">{{c}},
+                                                    </span>
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)==item[mod.name].length-1">{{c}}.</span>
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <!-- increasable_dropdown -->
+                                        <div *ngSwitchCase="'increasable_dropdown'">
+                                            <p>Add:
+                                                <span *ngFor="let c of item[mod.name]">
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)!=item[mod.name].length-1">{{c}},
+                                                    </span>
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)==item[mod.name].length-1">{{c}}.</span>
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <div *ngSwitchCase="'toggle'">
+                                            <p>Choice:
+                                                <span *ngFor="let c of item[mod.name]">
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)!=item[mod.name].length-1">{{c}},
+                                                    </span>
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)==item[mod.name].length-1">{{c}}.</span>
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <!-- multi-dropdown-limited -->
+                                        <div *ngSwitchCase="'multi-dropdown-limited'">
+                                            <p>{{ mod.displayName }}: <span *ngFor="let c of item[mod.name]">
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)!=item[mod.name].length-1">{{c}},
+                                                    </span>
+                                                    <span
+                                                        *ngIf="item[mod.name].indexOf(c)==item[mod.name].length-1">{{c}}.</span>
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <!-- boolean -->
+                                        <div *ngSwitchCase="'boolean'">{{ mod.displayName }}</div>
+
+                                        <!-- not supporting incrementor -->
+
+                                        <div *ngSwitchDefault>
+                                            <p style="color: red;">Error: Uncaught Modifier Type</p>
+                                            <pre>{{mod.displayName}}: {{item[mod.name] | json}}</pre>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <p class="instructions" *ngIf="item.instructions"><b>Note: {{item.instructions}}</b></p>
+                        </div>
+                        <p style="text-align: right;" class="itemPrice w-100">{{item.price | currency}}</p>
+                        <!-- End Modifiers -->
+
+
+
+                    </div>
+
+                    <div class="lineItems">
+                        <p>
+                            <span>Subtotal</span>
+                            <span>{{o.subTotal | currency}}</span>
+                        </p>
+                        <p>
+                            <span>Tax</span>
+                            <span class="ml-auto">{{o.tax | currency}}</span>
+                        </p>
+                        <p>
+                            <span>Tip</span>
+                            <span class="ml-auto">{{o.tipAmount | currency}}</span>
+                        </p>
+                        <p>
+                            <span>Fee</span>
+                            <span class="ml-auto">{{o.convenienceFee | currency}}</span>
+                        </p>
+                        <p>
+                            <span>Total</span>
+                            <span class="ml-auto">{{o.total | currency}}</span>
+                        </p>
+                    </div>
+                </mat-card>
+
+            </div>
+
+            <div *ngIf="(order_current | async) as o">
 
                 <mat-card class="receipt">
                     <p style="color: red;" *ngIf="o.canceled">Order was cancelled/refunded. </p>

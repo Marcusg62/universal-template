@@ -1,7 +1,6 @@
 import { Injectable, ApplicationRef, NgZone } from '@angular/core';
 import { FormGroup, FormBuilder, AbstractControl, Validators, ValidationErrors, FormArray, FormControl } from '@angular/forms';
 import { CartItem } from './Interfaces.model';
-import { AngularFireAuth } from '@angular/fire/auth';
 import { Restaurant, Coupon } from './Interfaces.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import * as dayjs from 'dayjs'
@@ -41,24 +40,13 @@ export class OrderFormService {
   public user;
   public userDocData;
 
-  constructor(public afs: AngularFirestore, private route: ActivatedRoute, private _snackBar: MatSnackBar, private afAuth: AngularFireAuth, private ref: ApplicationRef, private fb: FormBuilder) {
+  constructor(public afs: AngularFirestore, private route: ActivatedRoute, private _snackBar: MatSnackBar, private ref: ApplicationRef, private fb: FormBuilder) {
 
     this.restaurant$.subscribe(val => {
       this.restaurant = val;
       this.initializeOrderObject()
       console.log('val', this.restaurant)
     })
-
-    this.afAuth.user.subscribe(async (val) => {
-      // console.log('user change', val);
-      this.user = val;
-      if (val != null) {
-        // console.log('user change', JSON.parse(JSON.stringify(val)));
-        let tempVal = JSON.parse(JSON.stringify(val));
-        this.updateUserData(tempVal);
-
-      }
-    });
 
 
   } // end constructor 
@@ -1357,13 +1345,14 @@ export class OrderFormService {
       uid: user.uid,
       email: user.email,
       lastSeen: new Date(),
-      isAnonymous: this.user.isAnonymous,
-      provider: this.user.isAnonymous ? 'anonymous' : user.providerData
+      isAnonymous: user.isAnonymous,
+      provider: user.isAnonymous ? 'anonymous' : user.providerData
     };
     await userRef.set(data, { merge: true });
 
     this.afs.doc(`users/${user.uid}`).valueChanges().subscribe((val: any) => {
       this.userDocData = val;
+      console.log()
       this.orderObject.patchValue({
         'first': val.first,
         'last': val.last,

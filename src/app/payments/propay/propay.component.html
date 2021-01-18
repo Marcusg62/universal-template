@@ -1,0 +1,16 @@
+<div>
+    <button class="close pointer" mat-icon-button disabled aria-label="Button to close checkout dialog."
+        mat-dialog-close>
+        <mat-icon mat-dialog-close class="pointer">close</mat-icon>
+    </button>
+    <h3 class="text-center" style="margin: 0.5rem auto">Make Payment</h3>
+    <div *ngIf="HostedTransactionIdentifier else loading">
+        <iframe (load)="iframeLoad($event)" [src]="iframeURL" frameborder="0" width="100%" height="250px"></iframe>
+    </div>
+    <ng-template #loading>
+        <div style="height: 300px;">
+            Loading...
+
+        </div>
+    </ng-template>
+</div>

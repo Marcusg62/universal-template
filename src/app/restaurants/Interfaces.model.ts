@@ -104,7 +104,15 @@ export interface Restaurant {
     yelp: string,
     facebook: string,
     twitter: string
+  },
+  payment_processing: {
+    processor: string
   }
+}
+
+export enum PROCESSOR {
+  PROPAY = "propay",
+  STRIPE = "stripe"
 }
 
 export interface orderObject {

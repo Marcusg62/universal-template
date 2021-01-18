@@ -10,6 +10,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { OrderDetailsComponent } from '../order-details/order-details.component';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import { PropayComponent } from 'src/app/payments/propay/propay.component';
 
 @Component({
   selector: 'app-checkout',
@@ -59,13 +60,30 @@ export class CheckoutComponent implements OnInit {
       return;
     }
 
-    const dialogRef = this.dialog.open(PaymentDialogComponent, {
+    console.log('this.orderForm.restaurant', this.orderForm.restaurant)
 
-      width: '90vw',
-      maxWidth: '500px',
-      disableClose: true,
-      data: { amount: this.orderForm.orderObject.get('total').value }
-    });
+    
+    switch (this.orderForm.restaurant.payment_processing.processor) {
+      case 'propay':
+        let propayDialogRef = this.dialog.open(PropayComponent, {
+          width: '90vw',
+          maxWidth: '550px',
+          disableClose: true,
+          autoFocus: false,
+
+        });
+
+        break;
+
+      default:
+        let dialogRef = this.dialog.open(OrderDetailsComponent, {
+          width: '90vw',
+          maxWidth: '500px',
+          disableClose: true,
+          autoFocus: false,
+        });
+        break;
+    }
 
   }
 

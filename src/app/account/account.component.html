@@ -9,7 +9,7 @@
             <div>
                 <h3>Order History</h3>
                 <ul>
-                    <li *ngFor="let order of orderForm.userDocData.orders">
+                    <li *ngFor="let order of orderForm.userDocData?.orders">
                         <a [routerLink]="['orderstatus', order]" routerLinkActive="router-link-active">
                             {{order}}
                         </a>
