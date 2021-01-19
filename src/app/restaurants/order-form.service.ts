@@ -1344,22 +1344,13 @@ export class OrderFormService {
     const data = {
       uid: user.uid,
       email: user.email,
-      lastSeen: new Date(),
-      isAnonymous: user.isAnonymous,
-      provider: user.isAnonymous ? 'anonymous' : user.providerData
+      // lastSeen: new Date(),
+      // isAnonymous: user.isAnonymous,
+      // provider: user.isAnonymous ? 'anonymous' : user.providerData
     };
     await userRef.set(data, { merge: true });
 
-    this.afs.doc(`users/${user.uid}`).valueChanges().subscribe((val: any) => {
-      this.userDocData = val;
-      console.log()
-      this.orderObject.patchValue({
-        'first': val.first,
-        'last': val.last,
-        'email': val.email,
-        'phoneNum': val.phoneNum
-      });
-    });
+
 
   }
 

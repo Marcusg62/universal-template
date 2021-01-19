@@ -19,8 +19,26 @@ export class LoginComponent implements OnInit {
     this.afAuth.user.subscribe(user => {
       if (user) {
         this.orderForm.updateUserData(user)
+
+
+        this.afs.doc(`users/${user.uid}`).valueChanges().subscribe((val: any) => {
+          this.orderForm.userDocData = val;
+          console.log()
+          this.orderForm.orderObject.patchValue({
+            'first': val.first,
+            'last': val.last,
+            'email': val.email,
+            'phoneNum': val.phoneNum
+          });
+        });
+
+
+
       }
     })
+
+
+
   }
 
 
